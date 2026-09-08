@@ -83,6 +83,14 @@ function mapBlock(
   };
 }
 
+export function setBlockIncludeWhen(
+  template: Template,
+  blockId: string,
+  includeWhen: Expr | undefined,
+): Template {
+  return mapBlock(template, blockId, (block) => ({ ...block, includeWhen }));
+}
+
 export function setBlockText(
   template: Template,
   blockId: string,

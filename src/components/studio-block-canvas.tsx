@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { VisibleWhenEditor } from "@/components/visible-when-editor";
 import { listFormFields } from "@/lib/document-types/form-schema";
 import {
   BLOCK_TYPES,
@@ -12,6 +13,7 @@ import {
   flattenText,
   moveBlock,
   removeInline,
+  setBlockIncludeWhen,
   setBlockText,
   setVariantMapEntry,
   updateTextInline,
@@ -52,9 +54,11 @@ export function StudioBlockCanvas({
   onChange,
 }: Props) {
   const template = snapshot.template;
+  let includedIds = new Set<string>();
   let resolvedText = new Map<string, string>();
   try {
     const resolved = resolveDocument(snapshot, sampleAnswers);
+    includedIds = new Set(resolved.document.blocks.map((block) => block.id));
     resolvedText = new Map(
       resolved.document.blocks.map((block) => [
         block.id,
@@ -72,7 +76,8 @@ export function StudioBlockCanvas({
       <div className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-3">
         <h2 className="text-sm font-medium">Document</h2>
         <p className="text-xs text-muted-foreground">
-          Sample answers interpolate binds and variant maps.
+          Sample answers interpolate wording. Include-when drops clauses from
+          the preview.
         </p>
         <div className="ml-auto flex flex-wrap gap-1">
           {BLOCK_TYPES.map((type) => (
@@ -106,6 +111,7 @@ export function StudioBlockCanvas({
                   selectedFieldId != null &&
                   blockReferencesField(block, selectedFieldId)
                 }
+                included={includedIds.has(block.id)}
                 key={block.id}
                 onChange={onChange}
                 preview={resolvedText.get(block.id)}
@@ -122,6 +128,7 @@ function BlockRow({
   block,
   form,
   preview,
+  included,
   highlighted,
   canMoveUp,
   canMoveDown,
@@ -130,6 +137,7 @@ function BlockRow({
   block: Block;
   form: FormSchema;
   preview: string | undefined;
+  included: boolean;
   highlighted: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
@@ -235,14 +243,29 @@ function BlockRow({
           </select>
         ) : null}
       </div>
-      {block.type === "pageBreak" ? (
+      <VisibleWhenEditor
+        form={form}
+        label="Include when"
+        onChange={(expr) =>
+          onChange((current) =>
+            setBlockIncludeWhen(current, block.id, expr),
+          )
+        }
+        value={block.includeWhen}
+      />
+      {included ? null : (
+        <p className="text-xs text-muted-foreground">
+          Hidden in preview for these sample answers.
+        </p>
+      )}
+      {included && block.type === "pageBreak" ? (
         <div className="flex items-center gap-3 py-4 text-[10px] uppercase tracking-widest text-muted-foreground">
           <span className="h-px flex-1 border-t border-dashed" />
           Page break
           <span className="h-px flex-1 border-t border-dashed" />
         </div>
       ) : null}
-      {block.type === "signature" ? (
+      {included && block.type === "signature" ? (
         <div className="mt-8 grid grid-cols-2 gap-8 text-sm text-zinc-700">
           <div>
             <p className="mb-8 border-b border-zinc-400" />
@@ -254,7 +277,7 @@ function BlockRow({
           </div>
         </div>
       ) : null}
-      {block.type === "initials" ? (
+      {included && block.type === "initials" ? (
         <div className="flex items-end gap-2 text-sm text-zinc-700">
           <span className="inline-block size-10 border border-zinc-400" />
           <span>Initials</span>
@@ -262,6 +285,7 @@ function BlockRow({
       ) : null}
       {editable ? (
         <>
+          {included ? (
           <p
             className={cn(
               "font-serif text-zinc-800",
@@ -277,6 +301,7 @@ function BlockRow({
               <span className="text-muted-foreground">Empty</span>
             )}
           </p>
+          ) : null}
           <WordingEditor block={block} form={form} onChange={onChange} />
         </>
       ) : null}
