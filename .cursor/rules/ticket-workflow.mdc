@@ -1,0 +1,30 @@
+---
+description: Dynadoc Notion ticket loop — implement one ticket, stop for review, then PR
+alwaysApply: true
+---
+
+# Ticket workflow
+
+One Notion ticket per branch. Stop after a summary so the user can review. Do not commit, push, or open a PR until they say so.
+
+## Pick up
+
+1. Query Dynadoc Board (`collection://13c080c1-222c-4a14-af39-d8a1419c6b6f`).
+2. Take the next **Ready for Sprint** (then **TR Ready**) ticket with no unmet **Blocked by**.
+3. Prefer **Setup** → **Tenancy** → **Document Type Core** if several are unblocked.
+4. Fetch the page. Follow Description, Steps, Technical instructions, Validation.
+5. Set **Stage** to **In Dev** on that ticket only (pages we created). Never edit other Notion pages.
+
+## Build
+
+- Branch: `feat/<short-slug>` from latest `main` (orphan branch if the repo has no commits yet).
+- Stay inside the ticket. No auth/DB on the scaffold ticket, etc.
+- If a ticket adds a new way to run or test the app, update the root `Makefile` and `make help`.
+- Test what you wrote (unit, `make check` / lint, `make health`, browser if UI). App must still run.
+- Do **not** mark the ticket **Done** until the PR is merged.
+
+## After implementation
+
+Write a short summary: ticket, branch, what landed, how you tested, what you did not do. Then wait.
+
+When the user approves: commit, push (they may need to authenticate), `gh pr create`. After they merge, set Stage to **Done**.
