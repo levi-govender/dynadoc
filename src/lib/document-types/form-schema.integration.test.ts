@@ -6,6 +6,7 @@ import { closeDb, getDb } from "@/lib/db";
 import { organizations } from "@/lib/db/schema";
 import { createDocumentType } from "@/lib/document-types/create";
 import { addField, setFieldRequired } from "@/lib/document-types/form-schema";
+import { addBlock, setBlockText } from "@/lib/document-types/template";
 import {
   getDocumentType,
   saveDraft,
@@ -67,6 +68,32 @@ test("required flag round-trips on the draft snapshot", async (t) => {
     assert.equal(field?.id, fieldId);
     assert.equal(field?.required, true);
     assert.equal(field?.label, "Untitled field");
+
+    let template = addBlock(snapshot.template, "signature");
+    const signatureId = template.blocks.at(-1)?.id ?? "";
+    const headingId = template.blocks[0]?.id ?? "";
+    template = setBlockText(template, headingId, "Persisted heading");
+    await saveDraft({
+      organizationId: org.id,
+      documentTypeId: created.id,
+      snapshot: { ...snapshot, formSchema: form, template },
+    });
+    const withBlocks = parseDocumentTypeVersionSnapshot(
+      (
+        await getDocumentType({
+          organizationId: org.id,
+          documentTypeId: created.id,
+        })
+      ).draftSnapshot,
+    );
+    const headingChild = withBlocks.template.blocks[0]?.children?.[0];
+    assert.equal(headingChild?.type, "text");
+    assert.equal(
+      headingChild && headingChild.type === "text" ? headingChild.text : "",
+      "Persisted heading",
+    );
+    assert.equal(withBlocks.template.blocks.at(-1)?.id, signatureId);
+    assert.equal(withBlocks.template.blocks.at(-1)?.type, "signature");
   } catch (error) {
     if (error instanceof assert.AssertionError) {
       throw error;
