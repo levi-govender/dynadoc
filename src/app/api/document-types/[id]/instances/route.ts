@@ -2,11 +2,12 @@ import { auth } from "@/lib/auth";
 import { toAuthzResponse } from "@/lib/auth/authz";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import { INSTANCE_GENERATOR_ROLES, assertRole } from "@/lib/auth/roles";
+import { createInstanceFromPublished } from "@/lib/document-types/versions";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   context: RouteContext<"/api/document-types/[id]/instances">,
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -18,11 +19,32 @@ export async function POST(
     const { id } = await context.params;
     const membership = await requireUserMembership(session.user.id);
     assertRole(membership, INSTANCE_GENERATOR_ROLES);
+    let answers: unknown = {};
+    const contentType = request.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const body: unknown = await request.json();
+      if (
+        body &&
+        typeof body === "object" &&
+        "answers" in body &&
+        body.answers !== undefined
+      ) {
+        answers = body.answers;
+      }
+    }
+    const { instance, snapshot, version } = await createInstanceFromPublished({
+      organizationId: membership.organizationId,
+      documentTypeId: id,
+      createdBy: session.user.id,
+      answers,
+    });
     return NextResponse.json(
       {
+        id: instance.id,
         documentTypeId: id,
+        documentTypeVersionId: version.id,
         organizationId: membership.organizationId,
-        status: "instance-stub",
+        snapshot,
       },
       { status: 201 },
     );

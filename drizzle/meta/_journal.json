@@ -43,6 +43,13 @@
       "when": 1788867906743,
       "tag": "0005_org_context_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788868253976,
+      "tag": "0006_same_thunderbird",
+      "breakpoints": true
     }
   ]
 }
