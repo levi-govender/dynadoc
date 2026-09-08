@@ -101,8 +101,9 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
       />
       <StudioBlockCanvas
         onChange={patchTemplate}
+        sampleAnswers={preview.answers}
         selectedFieldId={selectedFieldId}
-        template={snapshot.template}
+        snapshot={snapshot}
       />
       <div className="min-h-0 overflow-y-auto border-t bg-background p-4 xl:border-t-0 xl:border-l">
         <SampleAnswersPanel

@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fixture from "@/types/fixtures/employment-contract.json";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
+import { resolveDocument } from "@/lib/resolver/resolve";
 import { emptyDraftSnapshot } from "./defaults";
+import { addField } from "./form-schema";
 import {
   addBlock,
+  appendBind,
+  appendVariantMap,
   blockReferencesField,
   deleteBlock,
   moveBlock,
   setBlockText,
+  setVariantMapEntry,
 } from "./template";
 
 test("addBlock uses a UUID and moveBlock reorders without changing ids", () => {
@@ -48,4 +53,60 @@ test("selecting a field highlights blocks that bind or include it", () => {
   assert.equal(blockReferencesField(notice, "employmentType"), true);
   assert.equal(blockReferencesField(notice, "noticeWeeks"), true);
   assert.equal(blockReferencesField(title, "startDate"), false);
+});
+
+test("appendBind interpolates a typed sample answer", () => {
+  const snapshot = emptyDraftSnapshot();
+  const groupId = snapshot.formSchema.groups[0]?.id ?? "";
+  const form = addField(snapshot.formSchema, groupId, "text");
+  const fieldId = form.groups[0]?.fields[0]?.id ?? "";
+  const paragraphId = snapshot.template.blocks[1]?.id ?? "";
+  let template = setBlockText(snapshot.template, paragraphId, "Hello ");
+  template = appendBind(template, paragraphId, fieldId);
+  const result = resolveDocument(
+    { ...snapshot, formSchema: form, template },
+    { [fieldId]: "Ada" },
+  );
+  const block = result.document.blocks.find((entry) => entry.id === paragraphId);
+  assert.equal(
+    (block?.children ?? []).map((child) => child.text).join(""),
+    "Hello Ada",
+  );
+});
+
+test("variant map wording follows the sample select value", () => {
+  const snapshot = parseDocumentTypeVersionSnapshot(fixture);
+  let template = appendVariantMap(snapshot.template, "title", "jobTitle", [
+    "Engineer",
+    "Manager",
+  ]);
+  const mapIndex =
+    (template.blocks.find((block) => block.id === "title")?.children?.length ??
+      1) - 1;
+  template = setVariantMapEntry(
+    template,
+    "title",
+    mapIndex,
+    "Engineer",
+    "Engineer heading",
+  );
+  template = setVariantMapEntry(
+    template,
+    "title",
+    mapIndex,
+    "Manager",
+    "Manager heading",
+  );
+  const heading = (jobTitle: string) => {
+    const result = resolveDocument(
+      { ...snapshot, template },
+      { employmentType: "contractor", jobTitle },
+    );
+    return (result.document.blocks.find((block) => block.id === "title")
+      ?.children ?? [])
+      .map((child) => child.text)
+      .join("");
+  };
+  assert.match(heading("Engineer"), /Engineer heading/);
+  assert.match(heading("Manager"), /Manager heading/);
 });
