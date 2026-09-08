@@ -28,6 +28,7 @@ export async function issueInstancePdf(args: {
     theme: args.snapshot.styleTheme,
     document: args.resolved.document,
     logo,
+    answers: args.resolved.answers,
   });
   const filename = issuedPdfFilename(args.documentTypeSlug, new Date());
   let objectKey: string | null = null;

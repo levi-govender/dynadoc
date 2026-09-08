@@ -8,6 +8,8 @@ import {
   renderToBuffer,
 } from "@react-pdf/renderer";
 import type { ResolvedDocument } from "@/lib/resolver/resolve";
+import type { Answers } from "@/lib/expr/evaluate";
+import { resolveThemeSignatures } from "@/lib/document-types/signatures";
 import type { StyleTheme } from "@/types/document-type";
 
 /** Tiny PNG used when the theme asks for a placeholder logo. */
@@ -36,8 +38,10 @@ export async function renderDocumentPdf(args: {
   theme: StyleTheme;
   document: ResolvedDocument;
   logo: PdfLogo;
+  answers?: Answers;
 }): Promise<Buffer> {
   const { theme, document: resolved } = args;
+  const signatures = resolveThemeSignatures(theme, args.answers ?? {});
   const margins = theme.page.margins;
   const bodySize = theme.typography.body.size;
   const headingSize = theme.typography.heading.size;
@@ -96,14 +100,26 @@ export async function renderDocumentPdf(args: {
             const label = block.type === "initials" ? "Initials" : "Signature";
             return (
               <View key={block.id} style={{ marginTop: 28 }}>
-                <View
-                  style={{
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#111",
-                    width: 220,
-                    marginBottom: 6,
-                  }}
-                />
+                {block.type === "initials" ? (
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderWidth: 1,
+                      borderColor: "#111",
+                      marginBottom: 6,
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      borderBottomWidth: 1,
+                      borderBottomColor: "#111",
+                      width: 220,
+                      marginBottom: 6,
+                    }}
+                  />
+                )}
                 <Text>{label}</Text>
               </View>
             );
@@ -125,18 +141,28 @@ export async function renderDocumentPdf(args: {
             </Text>
           );
         })}
-        {theme.signatures.blocks.map((slot) => (
+        {signatures.map((slot) => (
           <View key={slot.id} style={{ marginTop: 36, flexDirection: "row" }}>
             <View style={{ flex: 1 }}>
-              <View
-                style={{
-                  borderBottomWidth: 1,
-                  borderBottomColor: "#111",
-                  marginBottom: 6,
-                }}
-              />
+              {slot.imageSrc ? (
+                // eslint-disable-next-line jsx-a11y/alt-text
+                <Image
+                  src={slot.imageSrc}
+                  style={{ height: 36, width: 120, marginBottom: 6 }}
+                />
+              ) : (
+                <View
+                  style={{
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#111",
+                    marginBottom: 6,
+                    minHeight: slot.kind === "initials" ? 36 : 14,
+                  }}
+                />
+              )}
+              <Text>{slot.partyName ?? slot.partyLabel}</Text>
               <Text>{slot.partyLabel}</Text>
-              {slot.includeTitle ? <Text>Title</Text> : null}
+              {slot.includeTitle ? <Text>{slot.title ?? "Title"}</Text> : null}
             </View>
             {slot.includeDate ? (
               <View style={{ flex: 1, marginLeft: 24 }}>
@@ -147,7 +173,7 @@ export async function renderDocumentPdf(args: {
                     marginBottom: 6,
                   }}
                 />
-                <Text>Date</Text>
+                <Text>{slot.date ?? "Date"}</Text>
               </View>
             ) : null}
           </View>

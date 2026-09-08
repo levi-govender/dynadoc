@@ -7,19 +7,23 @@ export const PLACEHOLDER_LOGO_SRC =
     `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40" viewBox="0 0 160 40"><rect width="160" height="40" fill="#111"/><text x="12" y="26" fill="#fff" font-family="Times New Roman, serif" font-size="16">Logo</text></svg>`,
   );
 
-export function printPreviewLogoSrc(theme: StyleTheme): string | null {
-  const id = theme.letterhead.logoAssetId?.trim();
-  if (!id) {
+export function printPreviewAssetSrc(id: string | undefined | null): string | null {
+  const trimmed = id?.trim();
+  if (!trimmed) {
     return null;
   }
   if (
-    id.startsWith("http://") ||
-    id.startsWith("https://") ||
-    id.startsWith("data:")
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:")
   ) {
-    return id;
+    return trimmed;
   }
   return PLACEHOLDER_LOGO_SRC;
+}
+
+export function printPreviewLogoSrc(theme: StyleTheme): string | null {
+  return printPreviewAssetSrc(theme.letterhead.logoAssetId);
 }
 
 export function printPreviewPageCss(theme: StyleTheme) {

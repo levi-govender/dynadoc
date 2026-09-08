@@ -188,6 +188,18 @@ export function remapSnapshot(
         blocks: snapshot.styleTheme.signatures.blocks.map((slot) => ({
           ...slot,
           id: nextId(slot.id, ids),
+          partyNameField: slot.partyNameField
+            ? (ids.get(slot.partyNameField) ?? slot.partyNameField)
+            : undefined,
+          titleField: slot.titleField
+            ? (ids.get(slot.titleField) ?? slot.titleField)
+            : undefined,
+          dateField: slot.dateField
+            ? (ids.get(slot.dateField) ?? slot.dateField)
+            : undefined,
+          imageField: slot.imageField
+            ? (ids.get(slot.imageField) ?? slot.imageField)
+            : undefined,
         })),
       },
     },
