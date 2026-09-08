@@ -7,6 +7,7 @@ import { closeDb, getDb } from "@/lib/db";
 import {
   documentTypeVersions,
   documentTypes,
+  instances,
   organizations,
   user,
 } from "@/lib/db/schema";
@@ -162,4 +163,99 @@ test("publish freezes a version; later draft edits do not change generate JSON",
 
 after(async () => {
   await closeDb();
+});
+
+test("stored instance drops endDate when switching away from Fixed-term", async (t) => {
+  if (!process.env.DATABASE_URL) {
+    t.skip("DATABASE_URL is not set");
+    return;
+  }
+
+  try {
+    const db = getDb();
+    const stamp = Date.now();
+    const snapshot = parseDocumentTypeVersionSnapshot(fixture);
+    const [org] = await db
+      .insert(organizations)
+      .values({
+        externalId: `strip-${stamp}`,
+        name: "Strip org",
+      })
+      .returning({ id: organizations.id });
+    assert.ok(org);
+
+    const [author] = await db
+      .insert(user)
+      .values({
+        id: `strip-user-${stamp}`,
+        name: "Stripper",
+        email: `strip-${stamp}@example.com`,
+        emailVerified: true,
+      })
+      .returning({ id: user.id });
+    assert.ok(author);
+
+    const [type] = await withOrganization(org.id, async (scoped) =>
+      scoped
+        .insert(documentTypes)
+        .values({
+          organizationId: org.id,
+          slug: `strip-employment-${stamp}`,
+          name: "Employment",
+        })
+        .returning({ id: documentTypes.id }),
+    );
+    assert.ok(type);
+
+    await saveDraft({
+      organizationId: org.id,
+      documentTypeId: type.id,
+      snapshot,
+    });
+    await publishDocumentType({
+      organizationId: org.id,
+      documentTypeId: type.id,
+      publishedBy: author.id,
+    });
+
+    const generated = await createInstanceFromPublished({
+      organizationId: org.id,
+      documentTypeId: type.id,
+      createdBy: author.id,
+      answers: {
+        employmentType: "permanent",
+        jobTitle: "Engineer",
+        startDate: "2026-04-01",
+        noticeWeeks: 4,
+        endDate: "2027-03-31",
+      },
+    });
+
+    const [row] = await withOrganization(org.id, async (scoped) =>
+      scoped
+        .select()
+        .from(instances)
+        .where(eq(instances.id, generated.instance.id)),
+    );
+    assert.ok(row);
+    const stored = row.answers as Record<string, unknown>;
+    assert.equal(stored.endDate, undefined);
+    assert.equal(stored.noticeWeeks, 4);
+    const ast = row.resolvedAst as {
+      blocks?: { id?: string }[];
+    };
+    assert.equal(
+      ast.blocks?.some((block) => block.id === "end"),
+      false,
+    );
+  } catch (error) {
+    if (error instanceof assert.AssertionError) {
+      throw error;
+    }
+    if (isPostgresUnavailable(error)) {
+      t.skip("Postgres is not running or schema is not migrated");
+      return;
+    }
+    throw error;
+  }
 });
