@@ -17,7 +17,7 @@ export function SampleAnswersPanel({
   error,
 }: Props) {
   return (
-    <section className="flex max-w-md flex-col gap-3">
+    <section className="flex flex-col gap-3">
       <h2 className="text-sm font-medium">Sample answers</h2>
       <p className="text-xs text-muted-foreground">
         Hidden groups unmount here. Switching a choice drops stale answers.

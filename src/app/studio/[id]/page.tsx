@@ -10,7 +10,7 @@ import {
   DocumentTypeNotFoundError,
   getDocumentType,
 } from "@/lib/document-types/versions";
-import { StudioControlPanel } from "@/components/studio-control-panel";
+import { StudioDraftEditor } from "@/components/studio-draft-editor";
 import { emptyDraftSnapshot } from "@/lib/document-types/defaults";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
 import { headers } from "next/headers";
@@ -64,16 +64,19 @@ export default async function StudioDraftPage({
       : parseDocumentTypeVersionSnapshot(type.draftSnapshot);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-8">
-      <AppNav role={membership.role} />
-      <Link className="text-sm underline" href="/studio">
-        All types
-      </Link>
-      <h1 className="text-xl font-semibold">{type.name}</h1>
-      <p className="text-sm text-muted-foreground">
-        Draft {type.slug} · {type.status}
-      </p>
-      <StudioControlPanel
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex flex-wrap items-center gap-3 border-b bg-background px-4 py-3">
+        <AppNav role={membership.role} />
+        <span className="text-muted-foreground">/</span>
+        <Link className="text-sm text-muted-foreground hover:underline" href="/studio">
+          Types
+        </Link>
+        <h1 className="text-base font-semibold">{type.name}</h1>
+        <p className="text-xs text-muted-foreground">
+          {type.slug} · {type.status}
+        </p>
+      </header>
+      <StudioDraftEditor
         documentTypeId={type.id}
         initialSnapshot={snapshot}
       />

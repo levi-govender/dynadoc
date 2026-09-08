@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { SampleAnswersPanel } from "@/components/sample-answers-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VisibleWhenEditor } from "@/components/visible-when-editor";
-import {
-  overlappingActivationWarnings,
-  samplePreview,
-} from "@/lib/document-types/branching";
+import { cn } from "@/lib/utils";
+import type { ActivationOverlapWarning } from "@/lib/document-types/branching";
 import {
   FIELD_TYPES,
   addField,
@@ -25,96 +21,42 @@ import {
   setGroupVisibleWhen,
   updateSelectOption,
 } from "@/lib/document-types/form-schema";
-import type { Answers } from "@/lib/expr/evaluate";
-import type {
-  DocumentTypeVersionSnapshot,
-  Field,
-  FormSchema,
-} from "@/types/document-type";
+import type { Field, FormSchema } from "@/types/document-type";
 
 type Props = {
-  documentTypeId: string;
-  initialSnapshot: DocumentTypeVersionSnapshot;
+  form: FormSchema;
+  patchForm: (next: FormSchema | ((current: FormSchema) => FormSchema)) => void;
+  selectedFieldId: string | null;
+  onSelectField: (fieldId: string) => void;
+  overlapWarnings: ActivationOverlapWarning[];
+  status: "idle" | "saving" | "saved" | "error";
+  error: string | null;
 };
 
-export function StudioControlPanel({ documentTypeId, initialSnapshot }: Props) {
-  const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [sampleAnswers, setSampleAnswers] = useState<Answers>({});
-  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle",
-  );
-  const [error, setError] = useState<string | null>(null);
-  const skipFirst = useRef(true);
-
-  useEffect(() => {
-    if (skipFirst.current) {
-      skipFirst.current = false;
-      return;
-    }
-    const handle = window.setTimeout(() => {
-      void (async () => {
-        setStatus("saving");
-        const response = await fetch(
-          `/api/document-types/${documentTypeId}/draft`,
-          {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(snapshot),
-          },
-        );
-        if (!response.ok) {
-          const payload: unknown = await response.json().catch(() => null);
-          const message =
-            payload &&
-            typeof payload === "object" &&
-            "error" in payload &&
-            typeof payload.error === "string"
-              ? payload.error
-              : "Could not save draft";
-          setError(message);
-          setStatus("error");
-          return;
-        }
-        setError(null);
-        setStatus("saved");
-      })();
-    }, 400);
-    return () => window.clearTimeout(handle);
-  }, [documentTypeId, snapshot]);
-
-  const form = snapshot.formSchema;
-  const overlapWarnings = overlappingActivationWarnings(form);
-  const preview = useMemo(
-    () => samplePreview(form, sampleAnswers),
-    [form, sampleAnswers],
-  );
-
-  function patchForm(next: FormSchema | ((current: FormSchema) => FormSchema)) {
-    const formSchema = typeof next === "function" ? next(form) : next;
-    setSnapshot((current) => ({ ...current, formSchema }));
-    setSampleAnswers((previous) => {
-      const stripped = samplePreview(formSchema, previous).answers;
-      return JSON.stringify(stripped) === JSON.stringify(previous)
-        ? previous
-        : stripped;
-    });
-  }
-
+export function StudioControlPanel({
+  form,
+  patchForm,
+  selectedFieldId,
+  onSelectField,
+  overlapWarnings,
+  status,
+  error,
+}: Props) {
   return (
-    <div className="flex flex-col gap-8 lg:flex-row">
-      <section className="flex max-w-xl flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Control panel</h2>
-          <p className="text-xs text-muted-foreground">
-            {status === "saving"
-              ? "Saving…"
-              : status === "saved"
-                ? "Saved"
-                : status === "error"
-                  ? "Save failed"
-                  : "Edits save automatically"}
-          </p>
-        </div>
+    <section className="flex min-h-0 flex-col overflow-y-auto border-b bg-background xl:border-r xl:border-b-0">
+      <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-4 py-3">
+        <h2 className="text-sm font-medium">Fields</h2>
+        <p className="text-xs text-muted-foreground">
+          {status === "saving"
+            ? "Saving…"
+            : status === "saved"
+              ? "Saved"
+              : status === "error"
+                ? "Save failed"
+                : "Autosave"}
+        </p>
+      </div>
+      <div className="flex flex-col gap-4 p-4">
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {overlapWarnings.map((warning) => (
           <p className="text-sm text-destructive" key={`${warning.fieldId}-${warning.optionA}`}>
@@ -166,19 +108,22 @@ export function StudioControlPanel({ documentTypeId, initialSnapshot }: Props) {
                 groupId={group.id}
                 key={field.id}
                 onChange={patchForm}
+                onSelect={() => onSelectField(field.id)}
+                selected={selectedFieldId === field.id}
               />
             ))}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1">
               {FIELD_TYPES.map((type) => (
                 <Button
                   key={type}
                   onClick={() =>
                     patchForm((current) => addField(current, group.id, type))
                   }
+                  size="xs"
                   type="button"
                   variant="outline"
                 >
-                  Add {type}
+                  {type}
                 </Button>
               ))}
             </div>
@@ -191,25 +136,8 @@ export function StudioControlPanel({ documentTypeId, initialSnapshot }: Props) {
         >
           Add group
         </Button>
-      </section>
-      <SampleAnswersPanel
-        answers={preview.answers}
-        error={preview.error?.message ?? null}
-        fields={preview.fields.map((entry) => ({
-          field: entry.field,
-          groupTitle: entry.group.title,
-        }))}
-        onChange={(fieldId, value) => {
-          const next = { ...sampleAnswers };
-          if (value === undefined || value === "") {
-            delete next[fieldId];
-          } else {
-            next[fieldId] = value;
-          }
-          setSampleAnswers(samplePreview(form, next).answers);
-        }}
-      />
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -218,6 +146,8 @@ function FieldEditor({
   form,
   groupId,
   onChange,
+  onSelect,
+  selected,
   canMoveUp,
   canMoveDown,
 }: {
@@ -225,13 +155,20 @@ function FieldEditor({
   form: FormSchema;
   groupId: string;
   onChange: (next: (current: FormSchema) => FormSchema) => void;
+  onSelect: () => void;
+  selected: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
   const otherGroups = form.groups.filter((group) => group.id !== groupId);
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-2">
-      <div className="flex flex-wrap gap-2">
+    <div
+      className={cn(
+        "flex flex-col gap-2 rounded-lg border p-2",
+        selected && "border-amber-500 bg-amber-50/60",
+      )}
+    >
+      <div className="flex flex-wrap gap-1">
         <Input
           aria-label="Field label"
           onChange={(event) =>
@@ -268,6 +205,7 @@ function FieldEditor({
           onClick={() =>
             onChange((current) => moveField(current, groupId, field.id, -1))
           }
+          size="xs"
           type="button"
           variant="ghost"
         >
@@ -278,6 +216,7 @@ function FieldEditor({
           onClick={() =>
             onChange((current) => moveField(current, groupId, field.id, 1))
           }
+          size="xs"
           type="button"
           variant="ghost"
         >
@@ -287,10 +226,19 @@ function FieldEditor({
           onClick={() =>
             onChange((current) => deleteField(current, groupId, field.id))
           }
+          size="xs"
           type="button"
           variant="outline"
         >
           Delete
+        </Button>
+        <Button
+          onClick={onSelect}
+          size="xs"
+          type="button"
+          variant={selected ? "secondary" : "ghost"}
+        >
+          {selected ? "Linked" : "Link"}
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">{field.type}</p>
