@@ -9,11 +9,12 @@ One Notion ticket per branch. Stop after a summary so the user can review. Do no
 
 ## Pick up
 
-1. Query Dynadoc Board (`collection://13c080c1-222c-4a14-af39-d8a1419c6b6f`).
-2. Take the next **Ready for Sprint** (then **TR Ready**) ticket with no unmet **Blocked by**.
-3. Prefer **Setup** → **Tenancy** → **Document Type Core** if several are unblocked.
-4. Fetch the page. Follow Description, Steps, Technical instructions, Validation.
-5. Set **Stage** to **In Dev** on that ticket only (pages we created). Never edit other Notion pages.
+1. `git checkout main` and `git pull` (user enters SSH passphrase in their terminal if the agent cannot).
+2. Query Dynadoc Board (`collection://13c080c1-222c-4a14-af39-d8a1419c6b6f`).
+3. Take the next **Ready for Sprint** (then **TR Ready**) ticket with no unmet **Blocked by**.
+4. Prefer **Setup** → **Tenancy** → **Document Type Core** if several are unblocked.
+5. Fetch the page. Follow Description, Steps, Technical instructions, Validation.
+6. Set **Stage** to **In Dev** on that ticket only (pages we created). Never edit other Notion pages.
 
 ## Build
 
@@ -28,4 +29,4 @@ One Notion ticket per branch. Stop after a summary so the user can review. Do no
 
 Write a short summary: ticket, branch, what landed, how you tested, what you did not do. Then wait.
 
-When the user approves: **commit on the feature branch**. Never `git push` or `git pull`. After the commit, print `git push -u origin HEAD` for their terminal. **After they say they have pushed**, try `gh pr create` into `main`. If GitHub CLI needs login, stop and give them the compare URL instead. After they merge, set Stage to **Done**.
+When the user approves: **commit on the feature branch**. Never `git push`. Only `git pull` when starting a ticket on `main`. After the commit, print `git push -u origin HEAD` for their terminal. **After they say they have pushed**, try `gh pr create` into `main`. If GitHub CLI needs login, stop and give them the compare URL instead. After they merge, set Stage to **Done**.

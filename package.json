@@ -11,13 +11,17 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:smoke": "tsx src/lib/db/smoke.ts"
+    "db:smoke": "tsx src/lib/db/smoke.ts",
+    "storage:smoke": "tsx src/lib/storage/smoke.ts",
+    "test": "tsx --test src/lib/storage/keys.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.6",
     "drizzle-orm": "^0.44.5",
+    "@aws-sdk/client-s3": "^3.901.0",
+    "@aws-sdk/s3-request-presigner": "^3.901.0",
     "lucide-react": "^1.42.0",
     "next": "16.3.4",
     "postgres": "^3.4.7",
