@@ -11,6 +11,7 @@ import {
   type DocumentTypeVersionSnapshot,
 } from "@/types/document-type";
 import { GroupActivationCycleError, resolveDocument } from "@/lib/resolver/resolve";
+import { parseOperatorAnswers } from "@/lib/document-types/answers-schema";
 import { DocumentTypeSlugTakenError } from "@/lib/document-types/create";
 import { InstanceNotFoundError } from "@/lib/document-types/instances";
 
@@ -252,7 +253,8 @@ export async function createInstanceFromPublished(args: {
     published: published.snapshot,
     draft,
   });
-  const resolved = resolveDocument(snapshot, args.answers);
+  const answers = parseOperatorAnswers(snapshot.formSchema, args.answers);
+  const resolved = resolveDocument(snapshot, answers);
 
   return withOrganization(args.organizationId, async (db) => {
     const [instance] = await db

@@ -1,5 +1,5 @@
 import { AppNav } from "@/components/app-nav";
-import { OperatorGenerateForm } from "@/components/operator-generate-form";
+import { OperatorFillPanel } from "@/components/operator-fill-panel";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -57,13 +57,18 @@ export default async function FillTypePage({
     throw error;
   }
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">{published.type.name}</h1>
-      <p className="text-sm text-muted-foreground">
-        Generate stores an instance and downloads the issued PDF.
-      </p>
-      <OperatorGenerateForm documentTypeId={id} />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-col gap-2 p-6 pb-0">
+        <AppNav role={membership.role} />
+        <h1 className="text-xl font-semibold">{published.type.name}</h1>
+        <p className="text-sm text-muted-foreground">
+          Published version only. Hidden groups unmount and are not submitted.
+        </p>
+      </div>
+      <OperatorFillPanel
+        documentTypeId={id}
+        snapshot={published.snapshot}
+      />
     </div>
   );
 }
