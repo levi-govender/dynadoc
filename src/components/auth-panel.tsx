@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
 
+import type { MembershipRole } from "@/lib/db/schema";
+
 type Props = {
   signedIn: boolean;
   email?: string;
   organizationName?: string;
-  role?: string;
+  role?: MembershipRole;
 };
 
 export function AuthPanel({ signedIn, email, organizationName, role }: Props) {

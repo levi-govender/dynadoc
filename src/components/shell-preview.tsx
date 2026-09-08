@@ -40,13 +40,18 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function ShellPreview() {
+export function ShellPreview({
+  canOpenStudio = true,
+}: {
+  canOpenStudio?: boolean;
+}) {
+  const defaultTab = canOpenStudio ? "studio" : "run";
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
         <CardTitle>Dynadoc</CardTitle>
         <CardDescription>
-          App shell is up. Auth and database come in later tickets.
+          Roles are enforced on the server. Operators do not see Author Studio.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -60,13 +65,21 @@ export function ShellPreview() {
             <SelectItem value="operator">Operator</SelectItem>
           </SelectContent>
         </Select>
-        <Tabs defaultValue="studio">
+        <Tabs defaultValue={defaultTab}>
           <TabsList>
-            <TabsTrigger value="studio">Studio</TabsTrigger>
+            {canOpenStudio ? (
+              <TabsTrigger value="studio">Studio</TabsTrigger>
+            ) : null}
             <TabsTrigger value="run">Run</TabsTrigger>
           </TabsList>
-          <TabsContent value="studio">Template authoring will live here.</TabsContent>
-          <TabsContent value="run">Operators will fill published types here.</TabsContent>
+          {canOpenStudio ? (
+            <TabsContent value="studio">
+              Template authoring will live here.
+            </TabsContent>
+          ) : null}
+          <TabsContent value="run">
+            Operators will fill published types here.
+          </TabsContent>
         </Tabs>
         <div className="flex flex-wrap gap-2">
           <Dialog>
