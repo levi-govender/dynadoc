@@ -6,7 +6,7 @@ Multi-tenant dynamic document / PDF factory. This repo is the Next.js App Router
 
 ```bash
 make install
-printf 'DATABASE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc\nS3_BUCKET=dynadoc\nS3_REGION=us-east-1\nS3_ENDPOINT=http://127.0.0.1:9000\nS3_ACCESS_KEY_ID=dynadoc\nS3_SECRET_ACCESS_KEY=dynadocsecret\nS3_FORCE_PATH_STYLE=true\n' > .env.local
+printf 'DATABASE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc\nS3_BUCKET=dynadoc\nS3_REGION=us-east-1\nS3_ENDPOINT=http://127.0.0.1:9000\nS3_ACCESS_KEY_ID=dynadoc\nS3_SECRET_ACCESS_KEY=dynadocsecret\nS3_FORCE_PATH_STYLE=true\nBETTER_AUTH_SECRET=dev-only-insecure-secret-change-me-32ch\nBETTER_AUTH_URL=http://localhost:3000\n' > .env.local
 make db-up
 make db-migrate
 make dev
@@ -37,8 +37,10 @@ Prefer **Make** over raw npm as the app grows (`make help` lists targets). npm s
 | `make db-smoke` | `SELECT` from `health_checks` |
 | `make storage-smoke` | Upload a PNG to MinIO and download it via a signed URL |
 
-Create `.env.local` locally with `DATABASE_URL` and the `S3_*` values as above. Never commit `.env` files, including examples. Do not use `drizzle-kit push` in production; generate + migrate only.
+Create `.env.local` locally with those values. Never commit `.env` files, including examples. Do not use `drizzle-kit push` in production; generate + migrate only.
+
+Auth is **Better Auth** (email/password) persisted in our Postgres via Drizzle, not Clerk. On first sign-up we insert `organizations` (`external_id` = `user:<better-auth-user-id>`) and a membership with role `org_admin`. Extra members later default to `operator`. Use `requireMembership(organizationId, userId)` on APIs. Set a real `BETTER_AUTH_SECRET` outside local dev.
 
 Local object storage is MinIO (S3-compatible) so the same client works with Cloudflare R2 or AWS S3 by changing `S3_ENDPOINT` (and `S3_FORCE_PATH_STYLE=false` on AWS if needed). Helpers return object **keys** only; bytes stay in the bucket.
 
-Auth and the document resolver are later tickets. Placeholder folders: `src/lib/auth`, `src/lib/resolver`, `src/types`. The database has a smoke table only (`health_checks`) until the schema ticket.
+The document resolver is a later ticket. Placeholder folders: `src/lib/resolver`, `src/types`.
