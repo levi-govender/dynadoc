@@ -11,6 +11,7 @@ test("empty draft has one group, heading, paragraph, and A4 serif theme", () => 
   assert.equal(snapshot.template.blocks[1]?.type, "paragraph");
   assert.equal(snapshot.styleTheme.page.size, "A4");
   assert.equal(snapshot.styleTheme.typography.body.family, "Times New Roman");
+  assert.equal(snapshot.styleTheme.letterhead.logoAssetId, "placeholder-logo");
 });
 
 test("slugFromName kebab-cases a title", () => {

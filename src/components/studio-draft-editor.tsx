@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { SampleAnswersPanel } from "@/components/sample-answers-panel";
 import { StudioBlockCanvas } from "@/components/studio-block-canvas";
 import { StudioControlPanel } from "@/components/studio-control-panel";
+import { StudioPrintPreview } from "@/components/studio-print-preview";
 import { StudioStructurePreview } from "@/components/studio-structure-preview";
 import {
   overlappingActivationWarnings,
@@ -26,6 +28,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [sampleAnswers, setSampleAnswers] = useState<Answers>({});
+  const [pane, setPane] = useState<"structure" | "print">("structure");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
@@ -102,13 +105,35 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
         selectedFieldId={selectedFieldId}
         status={status}
       />
-      <StudioBlockCanvas
-        onChange={patchTemplate}
-        resolved={resolved}
-        selectedFieldId={selectedFieldId}
-        snapshot={snapshot}
-      />
+      {pane === "print" ? (
+        <StudioPrintPreview resolved={resolved} snapshot={snapshot} />
+      ) : (
+        <StudioBlockCanvas
+          onChange={patchTemplate}
+          resolved={resolved}
+          selectedFieldId={selectedFieldId}
+          snapshot={snapshot}
+        />
+      )}
       <div className="min-h-0 overflow-y-auto border-t bg-background p-4 xl:border-t-0 xl:border-l">
+        <div className="mb-4 flex gap-1">
+          <Button
+            onClick={() => setPane("structure")}
+            size="xs"
+            type="button"
+            variant={pane === "structure" ? "secondary" : "outline"}
+          >
+            Structure
+          </Button>
+          <Button
+            onClick={() => setPane("print")}
+            size="xs"
+            type="button"
+            variant={pane === "print" ? "secondary" : "outline"}
+          >
+            Print preview
+          </Button>
+        </div>
         <SampleAnswersPanel
           answers={preview.answers}
           error={preview.error?.message ?? null}
@@ -126,7 +151,9 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
             setSampleAnswers(samplePreview(form, next).answers);
           }}
         />
-        <StudioStructurePreview resolved={resolved} />
+        {pane === "structure" ? (
+          <StudioStructurePreview resolved={resolved} />
+        ) : null}
       </div>
     </div>
   );

@@ -46,7 +46,7 @@ export function emptyDraftSnapshot(): DocumentTypeVersionSnapshot {
         body: { family: "Times New Roman", size: 11 },
         heading: { family: "Times New Roman", size: 16, weight: 700 },
       },
-      letterhead: { footerMode: "pageNumbers" },
+      letterhead: { footerMode: "pageNumbers", logoAssetId: "placeholder-logo" },
       signatures: {
         blocks: [
           {
