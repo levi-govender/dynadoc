@@ -45,6 +45,6 @@ Tenant isolation: every business table gets `organization_id`. App queries go th
 
 Local object storage is MinIO (S3-compatible) so the same client works with Cloudflare R2 or AWS S3 by changing `S3_ENDPOINT` (and `S3_FORCE_PATH_STYLE=false` on AWS if needed). Helpers return object **keys** only; bytes stay in the bucket.
 
-Form, template, and style JSON is validated with Zod in `src/types/document-type.ts` (`schemaVersion`, expression AST with `eq`/`in`/`and`/`or`/`not`/`exists` only — no JavaScript). Import can use `documentTypeVersionJsonSchema()`.
+Form, template, and style JSON is validated with Zod in `src/types/document-type.ts` (`schemaVersion`, expression AST with `eq`/`in`/`and`/`or`/`not`/`exists` only — no JavaScript). Import can use `documentTypeVersionJsonSchema()`. Authors `PUT /api/document-types/:id/draft` and `POST .../publish` (transaction: insert `document_type_versions`, set `current_published_version_id`, `published_at`, `published_by`). Later draft edits do not change the published row. Operators `POST .../instances` from that frozen snapshot. `PATCH .../versions/:versionId` returns **409**.
 
 The document resolver is a later ticket. Placeholder folder: `src/lib/resolver`.

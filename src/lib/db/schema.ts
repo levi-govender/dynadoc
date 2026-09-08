@@ -153,7 +153,13 @@ export const documentTypes = pgTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     status: documentTypeStatus("status").notNull().default("draft"),
-    currentPublishedVersionId: uuid("current_published_version_id"),
+    draftSnapshot: jsonb("draft_snapshot"),
+    /** Ticket `published_version_id`; column name kept from 0003. */
+    publishedVersionId: uuid("current_published_version_id"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    publishedBy: text("published_by").references(() => user.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
