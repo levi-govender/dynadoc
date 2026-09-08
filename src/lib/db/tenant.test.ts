@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { tenantIsolationSql } from "./rls";
+import { TENANT_RLS_TABLES, tenantIsolationSql } from "./rls";
 import { OrganizationContextError, requireOrganizationId } from "./tenant";
 
 test("requireOrganizationId throws instead of querying without an org", () => {
@@ -17,4 +17,7 @@ test("tenantIsolationSql uses SET LOCAL-compatible current_setting", () => {
     sql,
     /organization_id = current_setting\('app.organization_id'\)::uuid/,
   );
+  for (const tableName of TENANT_RLS_TABLES) {
+    assert.match(tenantIsolationSql(tableName), new RegExp(`"${tableName}"`));
+  }
 });

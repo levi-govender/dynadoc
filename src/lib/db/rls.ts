@@ -1,3 +1,13 @@
+export const TENANT_RLS_TABLES = [
+  "document_families",
+  "document_types",
+  "document_type_versions",
+  "instances",
+  "assets",
+  "notifications",
+  "ingest_jobs",
+] as const;
+
 export function tenantIsolationSql(tableName: string) {
   if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
     throw new Error("Invalid table name for RLS policy");
