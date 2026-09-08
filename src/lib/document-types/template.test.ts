@@ -12,6 +12,7 @@ import {
   blockReferencesField,
   deleteBlock,
   moveBlock,
+  setBlockIncludeWhen,
   setBlockText,
   setVariantMapEntry,
 } from "./template";
@@ -109,4 +110,41 @@ test("variant map wording follows the sample select value", () => {
   };
   assert.match(heading("Engineer"), /Engineer heading/);
   assert.match(heading("Manager"), /Manager heading/);
+});
+
+test("permanent-only includeWhen drops the clause for fixed-term samples", () => {
+  const snapshot = parseDocumentTypeVersionSnapshot(fixture);
+  const notice = snapshot.template.blocks.find((block) => block.id === "notice");
+  assert.ok(notice?.includeWhen);
+  const template = setBlockIncludeWhen(snapshot.template, "notice", {
+    op: "eq",
+    field: "employmentType",
+    value: "permanent",
+  });
+  const fixedTerm = resolveDocument(
+    { ...snapshot, template },
+    {
+      employmentType: "fixed-term",
+      jobTitle: "Engineer",
+      startDate: "2026-04-01",
+      endDate: "2027-03-31",
+    },
+  );
+  const permanent = resolveDocument(
+    { ...snapshot, template },
+    {
+      employmentType: "permanent",
+      jobTitle: "Engineer",
+      startDate: "2026-04-01",
+      noticeWeeks: 4,
+    },
+  );
+  assert.equal(
+    fixedTerm.document.blocks.some((block) => block.id === "notice"),
+    false,
+  );
+  assert.equal(
+    permanent.document.blocks.some((block) => block.id === "notice"),
+    true,
+  );
 });

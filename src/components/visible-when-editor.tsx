@@ -6,6 +6,7 @@ type Props = {
   form: FormSchema;
   value: Expr | undefined;
   onChange: (expr: Expr | undefined) => void;
+  label?: string;
 };
 
 function eqState(expr: Expr | undefined) {
@@ -15,7 +16,12 @@ function eqState(expr: Expr | undefined) {
   return { field: "", value: "" };
 }
 
-export function VisibleWhenEditor({ form, value, onChange }: Props) {
+export function VisibleWhenEditor({
+  form,
+  value,
+  onChange,
+  label = "Visible when",
+}: Props) {
   const state = eqState(value);
   const fields = form.groups.flatMap((group) =>
     group.fields.map((field) => ({ id: field.id, label: field.label })),
@@ -23,9 +29,9 @@ export function VisibleWhenEditor({ form, value, onChange }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-muted-foreground">Visible when</span>
+      <span className="text-muted-foreground">{label}</span>
       <select
-        aria-label="Visible when field"
+        aria-label={`${label} field`}
         className="h-7 rounded-md border bg-background px-1"
         onChange={(event) => {
           const field = event.target.value;
@@ -48,7 +54,7 @@ export function VisibleWhenEditor({ form, value, onChange }: Props) {
         <>
           <span>equals</span>
           <input
-            aria-label="Visible when value"
+            aria-label={`${label} value`}
             className="h-7 w-32 rounded-md border bg-background px-1"
             onChange={(event) =>
               onChange({
