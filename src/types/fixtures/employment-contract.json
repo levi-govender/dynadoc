@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "expressionDialectVersion": 1,
+  "formSchema": {
+    "schemaVersion": 1,
+    "groups": [
+      {
+        "id": "agreement",
+        "title": "Agreement",
+        "fields": [
+          {
+            "id": "employmentType",
+            "type": "select",
+            "label": "Employment type",
+            "required": true,
+            "options": [
+              {
+                "value": "permanent",
+                "label": "Permanent",
+                "activatesGroupIds": ["permanentTerms"]
+              },
+              { "value": "contractor", "label": "Contractor" }
+            ]
+          },
+          {
+            "id": "jobTitle",
+            "type": "select",
+            "label": "Job title",
+            "required": true,
+            "options": [
+              { "value": "Engineer", "label": "Engineer" },
+              { "value": "Manager", "label": "Manager" }
+            ]
+          },
+          {
+            "id": "startDate",
+            "type": "date",
+            "label": "Start date",
+            "required": true
+          }
+        ]
+      },
+      {
+        "id": "permanentTerms",
+        "title": "Permanent terms",
+        "visibleWhen": {
+          "op": "eq",
+          "field": "employmentType",
+          "value": "permanent"
+        },
+        "fields": [
+          {
+            "id": "noticeWeeks",
+            "type": "number",
+            "label": "Notice period (weeks)",
+            "required": true
+          }
+        ]
+      }
+    ]
+  },
+  "template": {
+    "schemaVersion": 1,
+    "blocks": [
+      {
+        "id": "title",
+        "type": "heading",
+        "children": [{ "type": "text", "text": "Employment agreement" }]
+      },
+      {
+        "id": "start",
+        "type": "paragraph",
+        "children": [
+          { "type": "text", "text": "This agreement starts on " },
+          { "type": "bind", "field": "startDate" },
+          { "type": "text", "text": "." }
+        ]
+      },
+      {
+        "id": "role",
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "variantMap",
+            "field": "jobTitle",
+            "variants": {
+              "Engineer": "The employee is engaged as an engineer.",
+              "Manager": "The employee is engaged as a manager."
+            }
+          }
+        ]
+      },
+      {
+        "id": "notice",
+        "type": "paragraph",
+        "includeWhen": {
+          "op": "eq",
+          "field": "employmentType",
+          "value": "permanent"
+        },
+        "children": [
+          { "type": "text", "text": "Notice is " },
+          { "type": "bind", "field": "noticeWeeks" },
+          { "type": "text", "text": " weeks." }
+        ]
+      },
+      { "id": "sign", "type": "signature" }
+    ]
+  },
+  "styleTheme": {
+    "schemaVersion": 1,
+    "page": {
+      "size": "A4",
+      "margins": { "top": 72, "right": 54, "bottom": 72, "left": 54 }
+    },
+    "typography": {
+      "body": { "family": "Times New Roman", "size": 11 },
+      "heading": { "family": "Times New Roman", "size": 16, "weight": 700 }
+    },
+    "letterhead": { "footerMode": "pageNumbers" },
+    "signatures": {
+      "blocks": [
+        {
+          "id": "employee",
+          "partyLabel": "Employee",
+          "includeTitle": true,
+          "includeDate": true
+        }
+      ]
+    }
+  }
+}

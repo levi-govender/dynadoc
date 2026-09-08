@@ -22,7 +22,14 @@ export function getDb(): Database {
     return globalForDb.dynadocDb;
   }
 
-  const sql = postgres(getDatabaseUrl(), { max: 1 });
+  const sql = postgres(getDatabaseUrl(), {
+    max: 1,
+    connection: {
+      application_name: "dynadoc",
+      // POSTGRES_USER is a superuser and bypasses FORCE RLS. Session role is not.
+      role: process.env.DATABASE_APP_ROLE ?? "dynadoc_app",
+    },
+  });
   const db = drizzle(sql, { schema });
 
   globalForDb.dynadocSql = sql;

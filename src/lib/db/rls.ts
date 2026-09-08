@@ -17,6 +17,6 @@ export function tenantIsolationSql(tableName: string) {
     `ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;`,
     `ALTER TABLE "${tableName}" FORCE ROW LEVEL SECURITY;`,
     `DROP POLICY IF EXISTS "${tableName}_isolation" ON "${tableName}";`,
-    `CREATE POLICY "${tableName}_isolation" ON "${tableName}" FOR ALL TO PUBLIC USING (organization_id = current_setting('app.organization_id')::uuid) WITH CHECK (organization_id = current_setting('app.organization_id')::uuid);`,
+    `CREATE POLICY "${tableName}_isolation" ON "${tableName}" FOR ALL TO PUBLIC USING (organization_id = app_current_organization_id()) WITH CHECK (organization_id = app_current_organization_id());`,
   ].join("\n");
 }

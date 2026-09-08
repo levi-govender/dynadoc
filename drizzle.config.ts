@@ -10,6 +10,7 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url:
+      process.env.DATABASE_MIGRATE_URL ??
       process.env.DATABASE_URL ??
       "postgres://dynadoc:dynadoc@localhost:5432/dynadoc",
   },
