@@ -1,5 +1,6 @@
 import { AppNav } from "@/components/app-nav";
 import { CreateDocumentTypeForm } from "@/components/create-document-type-form";
+import { ImportDocumentTypeForm } from "@/components/import-document-type-form";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -44,6 +45,10 @@ export default async function StudioPage() {
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">New document type</h2>
         <CreateDocumentTypeForm />
+      </section>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium">Import JSON</h2>
+        <ImportDocumentTypeForm />
       </section>
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Types in this organization</h2>

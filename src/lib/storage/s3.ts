@@ -86,6 +86,19 @@ export async function putObject({
   return key;
 }
 
+export async function getObjectBytes(key: string): Promise<Buffer> {
+  const client = getS3Client();
+  const { bucket } = getStorageConfig();
+  const result = await client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: key }),
+  );
+  const bytes = await result.Body?.transformToByteArray();
+  if (!bytes) {
+    throw new Error(`Empty object: ${key}`);
+  }
+  return Buffer.from(bytes);
+}
+
 export async function getSignedDownloadUrl(
   key: string,
   expiresInSeconds = 3600,

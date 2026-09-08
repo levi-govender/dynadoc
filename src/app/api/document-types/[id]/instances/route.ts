@@ -3,6 +3,7 @@ import { toAuthzResponse } from "@/lib/auth/authz";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import { INSTANCE_GENERATOR_ROLES, assertRole } from "@/lib/auth/roles";
 import { createInstanceFromPublished } from "@/lib/document-types/versions";
+import { issueInstancePdf } from "@/lib/pdf/issue";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -32,13 +33,21 @@ export async function POST(
         answers = body.answers;
       }
     }
-    const { instance, snapshot, version, resolved } =
+    const { instance, snapshot, version, type, resolved } =
       await createInstanceFromPublished({
         organizationId: membership.organizationId,
         documentTypeId: id,
         createdBy: session.user.id,
         answers,
       });
+    const issued = await issueInstancePdf({
+      organizationId: membership.organizationId,
+      documentTypeId: id,
+      documentTypeSlug: type.slug,
+      instanceId: instance.id,
+      snapshot,
+      resolved,
+    });
     return NextResponse.json(
       {
         id: instance.id,
@@ -49,6 +58,9 @@ export async function POST(
         answers: resolved.answers,
         resolved: resolved.document,
         warnings: resolved.warnings,
+        filename: issued.filename,
+        issuedPdfKey: issued.objectKey,
+        pdfDownload: `/api/instances/${instance.id}/pdf`,
       },
       { status: 201 },
     );

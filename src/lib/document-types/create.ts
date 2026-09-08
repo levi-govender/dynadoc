@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { and, eq } from "drizzle-orm";
 import { documentTypes } from "@/lib/db/schema";
 import { organizationEq, withOrganization } from "@/lib/db/tenant";
 import { emptyDraftSnapshot } from "@/lib/document-types/defaults";
+import type { DocumentTypeVersionSnapshot } from "@/types/document-type";
 
 export class DocumentTypeSlugTakenError extends Error {
   constructor(message = "A document type with this slug already exists") {
@@ -41,16 +43,38 @@ export async function listDocumentTypes(organizationId: string) {
   );
 }
 
+export async function listPublishedDocumentTypes(organizationId: string) {
+  return withOrganization(organizationId, async (db) =>
+    db
+      .select({
+        id: documentTypes.id,
+        name: documentTypes.name,
+        slug: documentTypes.slug,
+        status: documentTypes.status,
+      })
+      .from(documentTypes)
+      .where(
+        and(
+          organizationEq(documentTypes.organizationId, organizationId),
+          eq(documentTypes.status, "published"),
+        ),
+      )
+      .orderBy(documentTypes.name),
+  );
+}
+
 export async function createDocumentType(args: {
   organizationId: string;
   name: string;
   slug: string;
+  snapshot?: DocumentTypeVersionSnapshot;
+  familyId?: string | null;
 }) {
   const body = createDocumentTypeBodySchema.parse({
     name: args.name,
     slug: args.slug,
   });
-  const snapshot = emptyDraftSnapshot();
+  const snapshot = args.snapshot ?? emptyDraftSnapshot();
   try {
     return await withOrganization(args.organizationId, async (db) => {
       const [row] = await db
@@ -60,6 +84,7 @@ export async function createDocumentType(args: {
           name: body.name,
           slug: body.slug,
           status: "draft",
+          familyId: args.familyId ?? null,
           draftSnapshot: snapshot,
         })
         .returning();

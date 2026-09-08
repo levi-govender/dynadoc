@@ -11,6 +11,7 @@ import {
   getDocumentType,
 } from "@/lib/document-types/versions";
 import { StudioDraftEditor } from "@/components/studio-draft-editor";
+import { StudioLogoUpload } from "@/components/studio-logo-upload";
 import { emptyDraftSnapshot } from "@/lib/document-types/defaults";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
 import { headers } from "next/headers";
@@ -75,6 +76,21 @@ export default async function StudioDraftPage({
         <p className="text-xs text-muted-foreground">
           {type.slug} · {type.status}
         </p>
+        <a
+          className="ml-auto text-sm underline"
+          href={`/api/document-types/${type.id}/export?source=draft`}
+        >
+          Export draft JSON
+        </a>
+        {type.publishedVersionId ? (
+          <a
+            className="text-sm underline"
+            href={`/api/document-types/${type.id}/export?source=published`}
+          >
+            Export published JSON
+          </a>
+        ) : null}
+        <StudioLogoUpload documentTypeId={type.id} />
       </header>
       <StudioDraftEditor
         documentTypeId={type.id}
