@@ -13,7 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "db:smoke": "tsx src/lib/db/smoke.ts",
     "storage:smoke": "tsx src/lib/storage/smoke.ts",
-    "test": "tsx --test src/lib/storage/keys.test.ts src/lib/auth/organizations.test.ts src/lib/auth/roles.test.ts"
+    "test": "tsx --test src/lib/storage/keys.test.ts src/lib/auth/organizations.test.ts src/lib/auth/roles.test.ts src/lib/db/tenant.test.ts src/lib/db/tenant.integration.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
