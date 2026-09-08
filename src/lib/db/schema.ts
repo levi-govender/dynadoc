@@ -72,6 +72,8 @@ export const membershipRole = pgEnum("membership_role", [
   "operator",
 ]);
 
+export type MembershipRole = (typeof membershipRole.enumValues)[number];
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   externalId: text("external_id").notNull().unique(),

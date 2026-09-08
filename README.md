@@ -39,7 +39,7 @@ Prefer **Make** over raw npm as the app grows (`make help` lists targets). npm s
 
 Create `.env.local` locally with those values. Never commit `.env` files, including examples. Do not use `drizzle-kit push` in production; generate + migrate only.
 
-Auth is **Better Auth** (email/password) persisted in our Postgres via Drizzle, not Clerk. On first sign-up we insert `organizations` (`external_id` = `user:<better-auth-user-id>`) and a membership with role `org_admin`. Extra members later default to `operator`. Use `requireMembership(organizationId, userId)` on APIs. Set a real `BETTER_AUTH_SECRET` outside local dev.
+Auth is **Better Auth** (email/password) persisted in our Postgres via Drizzle, not Clerk. On first sign-up we insert `organizations` (`external_id` = `user:<better-auth-user-id>`) and a membership with role `org_admin`. Extra members later default to `operator`. Use `requireMembership(organizationId, userId)` and `assertRole(membership, …)` on APIs; never trust a client-sent role. Authors and org admins can hit `GET /api/document-types/:id/draft` and open Author Studio; operators get **403**. Operators can `POST /api/document-types/:id/instances`. Set a real `BETTER_AUTH_SECRET` outside local dev.
 
 Local object storage is MinIO (S3-compatible) so the same client works with Cloudflare R2 or AWS S3 by changing `S3_ENDPOINT` (and `S3_FORCE_PATH_STYLE=false` on AWS if needed). Helpers return object **keys** only; bytes stay in the bucket.
 

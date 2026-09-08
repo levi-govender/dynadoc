@@ -62,6 +62,21 @@ export async function ensureOrganizationForUser(input: {
   return membership;
 }
 
+export async function requireUserMembership(userId: string) {
+  const db = getDb();
+  const [membership] = await db
+    .select()
+    .from(memberships)
+    .where(eq(memberships.userId, userId))
+    .limit(1);
+
+  if (!membership) {
+    throw new MembershipRequiredError();
+  }
+
+  return membership;
+}
+
 export async function requireMembership(organizationId: string, userId: string) {
   const db = getDb();
   const [membership] = await db

@@ -1,9 +1,11 @@
+import { AppNav } from "@/components/app-nav";
 import { AuthPanel } from "@/components/auth-panel";
 import { ShellPreview } from "@/components/shell-preview";
 import { auth } from "@/lib/auth";
 import { ensureOrganizationForUser } from "@/lib/auth/organizations";
+import { canEditDraft } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db";
-import { memberships, organizations } from "@/lib/db/schema";
+import { memberships, organizations, type MembershipRole } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
@@ -12,7 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const session = await auth.api.getSession({ headers: await headers() });
   let organizationName: string | undefined;
-  let role: string | undefined;
+  let role: MembershipRole | undefined;
 
   if (session) {
     await ensureOrganizationForUser({
@@ -36,13 +38,14 @@ export default async function Home() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-8">
+      <AppNav role={role} />
       <AuthPanel
         email={session?.user.email}
         organizationName={organizationName}
         role={role}
         signedIn={Boolean(session)}
       />
-      <ShellPreview />
+      <ShellPreview canOpenStudio={Boolean(role && canEditDraft(role))} />
     </div>
   );
 }
