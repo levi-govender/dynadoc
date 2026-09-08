@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Ticket workflow
 
-One Notion ticket per branch. Stop after a summary so the user can review. Do not commit, push, or open a PR until they say so.
+One Notion ticket per branch. Stop after a summary so the user can review. Do not commit until they approve. Never push or open a PR.
 
 ## Pick up
 
@@ -27,4 +27,4 @@ One Notion ticket per branch. Stop after a summary so the user can review. Do no
 
 Write a short summary: ticket, branch, what landed, how you tested, what you did not do. Then wait.
 
-When the user approves: commit, push (they may need to authenticate), `gh pr create`. After they merge, set Stage to **Done**.
+When the user approves: **commit on the feature branch**. Never `git push`, `git pull`, or `gh pr create` — the user does those in their own Cursor terminal so they can enter an SSH passphrase. After the commit, print the exact commands for them (usually `git push -u origin HEAD`). After they merge, set Stage to **Done**.
