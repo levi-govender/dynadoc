@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { memberships, organizations } from "@/lib/db/schema";
+import { consumePendingInviteForNewUser } from "@/lib/auth/invites";
 
 export class MembershipRequiredError extends Error {
   constructor(message = "Not a member of this organization") {
@@ -27,6 +28,18 @@ export async function ensureOrganizationForUser(input: {
 
   if (existing[0]) {
     return existing[0];
+  }
+
+  const accepted = await consumePendingInviteForNewUser({
+    userId: input.id,
+    email: input.email,
+  });
+  if (accepted) {
+    return {
+      membershipId: accepted.membership.id,
+      organizationId: accepted.membership.organizationId,
+      role: accepted.membership.role,
+    };
   }
 
   const name = input.name.trim() || input.email.split("@")[0] || "Workspace";
