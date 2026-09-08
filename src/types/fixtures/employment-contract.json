@@ -79,6 +79,15 @@
           }
         ]
       }
+    ],
+    "validations": [
+      {
+        "id": "endAfterStart",
+        "op": "gt",
+        "left": "endDate",
+        "right": "startDate",
+        "message": "End date must be after start date"
+      }
     ]
   },
   "template": {

@@ -81,9 +81,20 @@ export const fieldGroupSchema = z.object({
 
 export type FieldGroup = z.infer<typeof fieldGroupSchema>;
 
+export const formValidationSchema = z.object({
+  id: identifier,
+  message: z.string().min(1),
+  op: z.enum(["gt", "gte", "lt", "lte"]),
+  left: identifier,
+  right: identifier,
+});
+
+export type FormValidation = z.infer<typeof formValidationSchema>;
+
 export const formSchemaSchema = z.object({
   schemaVersion,
   groups: z.array(fieldGroupSchema),
+  validations: z.array(formValidationSchema).optional(),
 });
 
 export type FormSchema = z.infer<typeof formSchemaSchema>;

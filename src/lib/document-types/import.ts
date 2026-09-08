@@ -156,7 +156,16 @@ export function remapSnapshot(
 
   return {
     ...snapshot,
-    formSchema: { ...snapshot.formSchema, groups: remappedGroups },
+    formSchema: {
+      ...snapshot.formSchema,
+      groups: remappedGroups,
+      validations: snapshot.formSchema.validations?.map((rule) => ({
+        ...rule,
+        id: nextId(rule.id, ids),
+        left: ids.get(rule.left) ?? rule.left,
+        right: ids.get(rule.right) ?? rule.right,
+      })),
+    },
     template: {
       ...snapshot.template,
       blocks: snapshot.template.blocks.map((block) => ({

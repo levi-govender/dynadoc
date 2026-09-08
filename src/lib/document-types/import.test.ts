@@ -40,6 +40,11 @@ test("import remaps ids so a second import does not collide", () => {
     .find((child) => child.type === "bind");
   assert.ok(firstStart && bind && bind.type === "bind");
   assert.equal(bind.field, firstStart.id);
+  const firstEnd = first.formSchema.groups
+    .flatMap((group) => group.fields)
+    .find((field) => field.label === "End date");
+  assert.equal(first.formSchema.validations?.[0]?.left, firstEnd?.id);
+  assert.equal(first.formSchema.validations?.[0]?.right, firstStart.id);
 });
 
 test("family bundle parses with multiple members", () => {

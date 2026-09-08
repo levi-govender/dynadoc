@@ -8,6 +8,7 @@ import {
   InviteExpiredError,
   InviteNotFoundError,
 } from "@/lib/auth/invites";
+import { OperatorAnswersError } from "@/lib/document-types/answers-schema";
 import {
   documentTypeErrorStatus,
   isDocumentTypeClientError,
@@ -34,6 +35,12 @@ export function toAuthzResponse(error: unknown) {
   }
   if (error instanceof ZodError) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  if (error instanceof OperatorAnswersError) {
+    return NextResponse.json(
+      { error: error.message, issues: error.issues },
+      { status: 400 },
+    );
   }
   if (isDocumentTypeClientError(error) && error instanceof Error) {
     return NextResponse.json(

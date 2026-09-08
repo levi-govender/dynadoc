@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ZodError } from "zod";
-import { parseOperatorAnswers } from "./answers-schema";
+import { parseOperatorAnswers, collectOperatorIssues, OperatorAnswersError } from "./answers-schema";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
 import fixture from "@/types/fixtures/employment-contract.json";
 
@@ -39,4 +39,33 @@ test("missing visible required field fails Zod", () => {
       }),
     ZodError,
   );
+});
+
+test("hidden required fields do not appear in collectOperatorIssues", () => {
+  const issues = collectOperatorIssues(form, {
+    employmentType: "contractor",
+    jobTitle: "Engineer",
+    startDate: "2026-04-01",
+  });
+  assert.deepEqual(issues, []);
+});
+
+test("endDate after startDate is required when fixed-term is visible", () => {
+  assert.throws(
+    () =>
+      parseOperatorAnswers(form, {
+        employmentType: "fixed-term",
+        jobTitle: "Engineer",
+        startDate: "2026-04-01",
+        endDate: "2026-03-01",
+      }),
+    OperatorAnswersError,
+  );
+  const answers = parseOperatorAnswers(form, {
+    employmentType: "fixed-term",
+    jobTitle: "Engineer",
+    startDate: "2026-04-01",
+    endDate: "2026-05-01",
+  });
+  assert.equal(answers.endDate, "2026-05-01");
 });
