@@ -11,6 +11,7 @@ import {
   type DocumentTypeVersionSnapshot,
 } from "@/types/document-type";
 import { GroupActivationCycleError, resolveDocument } from "@/lib/resolver/resolve";
+import { DocumentTypeSlugTakenError } from "@/lib/document-types/create";
 
 export class DocumentTypeNotFoundError extends Error {
   constructor(message = "Document type not found") {
@@ -282,6 +283,7 @@ export function isDocumentTypeClientError(error: unknown) {
     error instanceof UnpublishedTypeError ||
     error instanceof PublishedVersionImmutableError ||
     error instanceof GroupActivationCycleError ||
+    error instanceof DocumentTypeSlugTakenError ||
     error instanceof ZodError
   );
 }
@@ -291,6 +293,9 @@ export function documentTypeErrorStatus(error: unknown): number {
     return 404;
   }
   if (error instanceof PublishedVersionImmutableError) {
+    return 409;
+  }
+  if (error instanceof DocumentTypeSlugTakenError) {
     return 409;
   }
   if (error instanceof UnpublishedTypeError) {

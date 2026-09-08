@@ -1,4 +1,5 @@
 import { AppNav } from "@/components/app-nav";
+import { CreateDocumentTypeForm } from "@/components/create-document-type-form";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -6,7 +7,9 @@ import {
   RoleForbiddenError,
   assertRole,
 } from "@/lib/auth/roles";
+import { listDocumentTypes } from "@/lib/document-types/create";
 import { headers } from "next/headers";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -32,13 +35,33 @@ export default async function StudioPage() {
     throw error;
   }
 
+  const types = await listDocumentTypes(membership.organizationId);
+
   return (
-    <div className="flex flex-1 flex-col gap-4 p-8">
+    <div className="flex flex-1 flex-col gap-6 p-8">
       <AppNav role={membership.role} />
       <h1 className="text-xl font-semibold">Author Studio</h1>
-      <p className="text-sm text-muted-foreground">
-        Draft editing will live here. Operators cannot open this page.
-      </p>
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium">New document type</h2>
+        <CreateDocumentTypeForm />
+      </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium">Types in this organization</h2>
+        {types.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No document types yet.</p>
+        ) : (
+          <ul className="flex max-w-lg flex-col gap-2">
+            {types.map((type) => (
+              <li key={type.id}>
+                <Link className="underline" href={`/studio/${type.id}`}>
+                  {type.name}
+                </Link>
+                <span className="text-muted-foreground"> ({type.slug})</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
