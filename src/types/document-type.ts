@@ -151,8 +151,13 @@ export const fontSpecSchema = z.object({
 export const signatureSlotSchema = z.object({
   id: identifier,
   partyLabel: z.string().min(1),
+  kind: z.enum(["signature", "initials"]).optional(),
   includeTitle: z.boolean().optional(),
   includeDate: z.boolean().optional(),
+  partyNameField: identifier.optional(),
+  titleField: identifier.optional(),
+  dateField: identifier.optional(),
+  imageField: identifier.optional(),
   imageAssetId: z.string().optional(),
 });
 
@@ -177,6 +182,7 @@ export const styleThemeSchema = z.object({
 });
 
 export type StyleTheme = z.infer<typeof styleThemeSchema>;
+export type SignatureSlot = z.infer<typeof signatureSlotSchema>;
 
 export const documentTypeVersionSnapshotSchema = z.object({
   schemaVersion,

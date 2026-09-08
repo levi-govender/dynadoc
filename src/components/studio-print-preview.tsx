@@ -5,6 +5,7 @@ import {
   printPreviewPageCss,
 } from "@/lib/document-types/print-preview";
 import type { StudioResolve } from "@/lib/document-types/structure-preview";
+import { resolveThemeSignatures } from "@/lib/document-types/signatures";
 import type { DocumentTypeVersionSnapshot } from "@/types/document-type";
 
 type Props = {
@@ -16,6 +17,10 @@ export function StudioPrintPreview({ snapshot, resolved }: Props) {
   const theme = snapshot.styleTheme;
   const css = printPreviewPageCss(theme);
   const logoSrc = printPreviewLogoSrc(theme);
+  const signatures = resolveThemeSignatures(
+    theme,
+    resolved.ok ? resolved.result.answers : {},
+  );
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-200">
@@ -70,17 +75,27 @@ export function StudioPrintPreview({ snapshot, resolved }: Props) {
                   type={block.type}
                 />
               ))}
-              {theme.signatures.blocks.map((slot) => (
+              {signatures.map((slot) => (
                 <div className="mt-10 grid grid-cols-2 gap-10 text-sm" key={slot.id}>
                   <div>
-                    <p className="mb-10 border-b border-zinc-800" />
-                    <p>{slot.partyLabel}</p>
-                    {slot.includeTitle ? <p>Title</p> : null}
+                    {slot.imageSrc ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        alt=""
+                        className="mb-2 h-10 w-auto"
+                        src={slot.imageSrc}
+                      />
+                    ) : (
+                      <p className="mb-10 border-b border-zinc-800" />
+                    )}
+                    <p>{slot.partyName ?? slot.partyLabel}</p>
+                    <p className="text-xs text-zinc-500">{slot.partyLabel}</p>
+                    {slot.includeTitle ? <p>{slot.title ?? "Title"}</p> : null}
                   </div>
                   {slot.includeDate ? (
                     <div>
                       <p className="mb-10 border-b border-zinc-800" />
-                      <p>Date</p>
+                      <p>{slot.date ?? "Date"}</p>
                     </div>
                   ) : null}
                 </div>
@@ -143,8 +158,27 @@ function PrintBlock({
       </table>
     );
   }
-  if (type === "signature" || type === "initials") {
-    return null;
+  if (type === "signature") {
+    return (
+      <div className="mt-8 grid grid-cols-2 gap-8 text-sm">
+        <div>
+          <p className="mb-8 border-b border-zinc-400" />
+          <p>Signature</p>
+        </div>
+        <div>
+          <p className="mb-8 border-b border-zinc-400" />
+          <p>Date</p>
+        </div>
+      </div>
+    );
+  }
+  if (type === "initials") {
+    return (
+      <div className="mt-6 flex items-end gap-2 text-sm">
+        <span className="inline-block size-10 border border-zinc-400" />
+        <span>Initials</span>
+      </div>
+    );
   }
   return <p className="leading-relaxed">{text}</p>;
 }
