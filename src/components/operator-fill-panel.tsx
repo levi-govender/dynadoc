@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { StudioPrintPreview } from "@/components/studio-print-preview";
 import { samplePreview } from "@/lib/document-types/branching";
 import { studioResolve } from "@/lib/document-types/structure-preview";
-import { parseOperatorAnswers } from "@/lib/document-types/answers-schema";
+import { collectOperatorIssues } from "@/lib/document-types/answers-schema";
 import type { Answers } from "@/lib/expr/evaluate";
 import type { DocumentTypeVersionSnapshot, Field } from "@/types/document-type";
-import { ZodError } from "zod";
 
 type Props = {
   documentTypeId: string;
@@ -27,6 +26,19 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
   );
   const stripped = preview.answers;
   const resolved = studioResolve(snapshot, stripped);
+  const issues = collectOperatorIssues(snapshot.formSchema, stripped);
+  const issuesByField = new Map<string, string[]>();
+  const formIssues: string[] = [];
+  for (const issue of issues) {
+    if (issue.fieldId) {
+      const list = issuesByField.get(issue.fieldId) ?? [];
+      list.push(issue.message);
+      issuesByField.set(issue.fieldId, list);
+    } else {
+      formIssues.push(issue.message);
+    }
+  }
+  const canGenerate = issues.length === 0 && !preview.error;
 
   const groups = useMemo(() => {
     const byGroup = new Map<
@@ -64,17 +76,7 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
         className="flex min-h-0 flex-col overflow-y-auto border-b bg-background p-4 xl:border-r xl:border-b-0"
         onSubmit={(event) => {
           event.preventDefault();
-          let payload: Answers;
-          try {
-            payload = parseOperatorAnswers(snapshot.formSchema, stripped);
-          } catch (caught) {
-            setError(
-              caught instanceof ZodError
-                ? caught.message
-                : caught instanceof Error
-                  ? caught.message
-                  : "Answers are invalid",
-            );
+          if (!canGenerate) {
             return;
           }
           setPending(true);
@@ -82,7 +84,7 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
           void fetch(`/api/document-types/${documentTypeId}/instances`, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ answers: payload }),
+            body: JSON.stringify({ answers: stripped }),
           }).then(async (response) => {
             const body: unknown = await response.json().catch(() => null);
             setPending(false);
@@ -128,12 +130,22 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                   onChange={(value) => setField(field.id, value)}
                   value={stripped[field.id]}
                 />
+                {(issuesByField.get(field.id) ?? []).map((message) => (
+                  <p className="text-xs text-destructive" key={message}>
+                    {message}
+                  </p>
+                ))}
               </label>
             ))}
           </fieldset>
         ))}
+        {formIssues.map((message) => (
+          <p className="text-sm text-destructive" key={message}>
+            {message}
+          </p>
+        ))}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button disabled={pending} type="submit">
+        <Button disabled={pending || !canGenerate} type="submit">
           Generate PDF
         </Button>
       </form>
