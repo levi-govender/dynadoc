@@ -17,4 +17,4 @@ Create `feat/<slug>`. Implement only that ticket. Run its Validation checks plus
 
 ## Stop
 
-Summarize in chat. Do not commit until the user reviews and asks. Never push or create a PR. After they approve, commit locally and print `git push` / GitHub PR steps for their terminal. Do not set Stage to Done until merge.
+Summarize in chat. Do not commit until the user reviews and asks. Never push. After they approve, commit locally and print `git push` for their terminal. After they confirm the push, try `gh pr create` into `main`. Do not set Stage to Done until merge.
