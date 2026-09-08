@@ -29,3 +29,21 @@ export function getDb(): Database {
   globalForDb.dynadocDb = db;
   return db;
 }
+
+export function getSql() {
+  getDb();
+  const sql = globalForDb.dynadocSql;
+  if (!sql) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return sql;
+}
+
+export async function closeDb() {
+  if (!globalForDb.dynadocSql) {
+    return;
+  }
+  await globalForDb.dynadocSql.end({ timeout: 5 });
+  globalForDb.dynadocSql = undefined;
+  globalForDb.dynadocDb = undefined;
+}

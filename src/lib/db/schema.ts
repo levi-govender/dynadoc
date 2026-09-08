@@ -100,3 +100,15 @@ export const memberships = pgTable(
   },
   (table) => [unique("memberships_org_user").on(table.organizationId, table.userId)],
 );
+
+/** Pattern table for tenant RLS. Later business tables copy this organization_id + policy helper. */
+export const tenantRecords = pgTable("tenant_records", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
