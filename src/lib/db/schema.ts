@@ -1,5 +1,7 @@
 import {
   boolean,
+  integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -108,6 +110,142 @@ export const tenantRecords = pgTable("tenant_records", {
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
   note: text("note").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const documentTypeStatus = pgEnum("document_type_status", [
+  "draft",
+  "published",
+]);
+
+export const documentFamilies = pgTable(
+  "document_families",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    discriminator: jsonb("discriminator"),
+    sharedFieldGroups: jsonb("shared_field_groups"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("document_families_org_slug").on(table.organizationId, table.slug),
+  ],
+);
+
+export const documentTypes = pgTable(
+  "document_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    familyId: uuid("family_id").references(() => documentFamilies.id, {
+      onDelete: "set null",
+    }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    status: documentTypeStatus("status").notNull().default("draft"),
+    currentPublishedVersionId: uuid("current_published_version_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("document_types_org_slug").on(table.organizationId, table.slug),
+  ],
+);
+
+export const documentTypeVersions = pgTable(
+  "document_type_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    documentTypeId: uuid("document_type_id")
+      .notNull()
+      .references(() => documentTypes.id, { onDelete: "cascade" }),
+    versionNumber: integer("version_number").notNull(),
+    formSchema: jsonb("form_schema").notNull(),
+    template: jsonb("template").notNull(),
+    styleTheme: jsonb("style_theme").notNull(),
+    expressionDialectVersion: integer("expression_dialect_version")
+      .notNull()
+      .default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    unique("document_type_versions_type_number").on(
+      table.documentTypeId,
+      table.versionNumber,
+    ),
+  ],
+);
+
+export const instances = pgTable("instances", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  documentTypeVersionId: uuid("document_type_version_id")
+    .notNull()
+    .references(() => documentTypeVersions.id, { onDelete: "restrict" }),
+  answers: jsonb("answers").notNull(),
+  resolvedAst: jsonb("resolved_ast").notNull(),
+  issuedPdfKey: text("issued_pdf_key"),
+  createdBy: text("created_by").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const assets = pgTable("assets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  documentTypeId: uuid("document_type_id").references(() => documentTypes.id, {
+    onDelete: "set null",
+  }),
+  kind: text("kind").notNull(),
+  objectKey: text("object_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  payload: jsonb("payload").notNull().default({}),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const ingestJobs = pgTable("ingest_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  payload: jsonb("payload").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
