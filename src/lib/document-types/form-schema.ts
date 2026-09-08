@@ -1,4 +1,4 @@
-import type { Field, FieldGroup, FormSchema } from "@/types/document-type";
+import type { Expr, Field, FieldGroup, FormSchema } from "@/types/document-type";
 import { formSchemaSchema } from "@/types/document-type";
 
 export const FIELD_TYPES = [
@@ -175,7 +175,7 @@ export function updateSelectOption(
   groupId: string,
   fieldId: string,
   optionIndex: number,
-  patch: { value?: string; label?: string },
+  patch: { value?: string; label?: string; activatesGroupIds?: string[] },
 ): FormSchema {
   return updateField(form, groupId, fieldId, (field) => {
     if (field.type !== "select") {
@@ -189,11 +189,33 @@ export function updateSelectOption(
               ...option,
               value: patch.value ?? option.value,
               label: patch.label ?? option.label,
+              activatesGroupIds:
+                patch.activatesGroupIds ?? option.activatesGroupIds,
             }
           : option,
       ),
     };
   });
+}
+
+export function setGroupVisibleWhen(
+  form: FormSchema,
+  groupId: string,
+  visibleWhen: Expr | undefined,
+): FormSchema {
+  return mapGroup(form, groupId, (group) => ({ ...group, visibleWhen }));
+}
+
+export function setFieldVisibleWhen(
+  form: FormSchema,
+  groupId: string,
+  fieldId: string,
+  visibleWhen: Expr | undefined,
+): FormSchema {
+  return updateField(form, groupId, fieldId, (field) => ({
+    ...field,
+    visibleWhen,
+  }));
 }
 
 export function deleteSelectOption(
