@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { SampleAnswersPanel } from "@/components/sample-answers-panel";
 import { StudioBlockCanvas } from "@/components/studio-block-canvas";
 import { StudioControlPanel } from "@/components/studio-control-panel";
+import { StudioStructurePreview } from "@/components/studio-structure-preview";
 import {
   overlappingActivationWarnings,
   samplePreview,
 } from "@/lib/document-types/branching";
+import { studioResolve } from "@/lib/document-types/structure-preview";
 import type { Answers } from "@/lib/expr/evaluate";
 import type {
   DocumentTypeVersionSnapshot,
@@ -69,6 +71,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
   const form = snapshot.formSchema;
   const overlapWarnings = overlappingActivationWarnings(form);
   const preview = samplePreview(form, sampleAnswers);
+  const resolved = studioResolve(snapshot, preview.answers);
 
   function patchForm(next: FormSchema | ((current: FormSchema) => FormSchema)) {
     const formSchema = typeof next === "function" ? next(form) : next;
@@ -101,7 +104,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
       />
       <StudioBlockCanvas
         onChange={patchTemplate}
-        sampleAnswers={preview.answers}
+        resolved={resolved}
         selectedFieldId={selectedFieldId}
         snapshot={snapshot}
       />
@@ -123,6 +126,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
             setSampleAnswers(samplePreview(form, next).answers);
           }}
         />
+        <StudioStructurePreview resolved={resolved} />
       </div>
     </div>
   );
