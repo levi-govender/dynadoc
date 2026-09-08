@@ -116,10 +116,7 @@ test("query without org context throws and does not return all rows", async (t) 
       t.skip("Postgres is not running or tenant_records is not migrated");
       return;
     }
-    assert.match(
-      errorText(error),
-      /unrecognized configuration parameter|app\.organization_id/i,
-    );
+    assert.match(errorText(error), /app\.organization_id is required/i);
   }
 });
 

@@ -6,7 +6,7 @@ Multi-tenant dynamic document / PDF factory. This repo is the Next.js App Router
 
 ```bash
 make install
-printf 'DATABASE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc\nS3_BUCKET=dynadoc\nS3_REGION=us-east-1\nS3_ENDPOINT=http://127.0.0.1:9000\nS3_ACCESS_KEY_ID=dynadoc\nS3_SECRET_ACCESS_KEY=dynadocsecret\nS3_FORCE_PATH_STYLE=true\nBETTER_AUTH_SECRET=dev-only-insecure-secret-change-me-32ch\nBETTER_AUTH_URL=http://localhost:3000\n' > .env.local
+printf 'DATABASE_URL=postgres://dynadoc_app:dynadoc@localhost:5432/dynadoc\nDATABASE_MIGRATE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc\nS3_BUCKET=dynadoc\nS3_REGION=us-east-1\nS3_ENDPOINT=http://127.0.0.1:9000\nS3_ACCESS_KEY_ID=dynadoc\nS3_SECRET_ACCESS_KEY=dynadocsecret\nS3_FORCE_PATH_STYLE=true\nBETTER_AUTH_SECRET=dev-only-insecure-secret-change-me-32ch\nBETTER_AUTH_URL=http://localhost:3000\n' > .env.local
 make db-up
 make db-migrate
 make dev
@@ -41,8 +41,10 @@ Create `.env.local` locally with those values. Never commit `.env` files, includ
 
 Auth is **Better Auth** (email/password) persisted in our Postgres via Drizzle, not Clerk. On first sign-up we insert `organizations` (`external_id` = `user:<better-auth-user-id>`) and a membership with role `org_admin`. Extra members later default to `operator`. Use `requireMembership(organizationId, userId)` and `assertRole(membership, …)` on APIs; never trust a client-sent role. Authors and org admins can hit `GET /api/document-types/:id/draft` and open Author Studio; operators get **403**. Operators can `POST /api/document-types/:id/instances`. Set a real `BETTER_AUTH_SECRET` outside local dev.
 
-Tenant isolation: every business table gets `organization_id`. App queries go through `withOrganization(orgId, …)` (`SET LOCAL app.organization_id`) plus an `eq` on `organization_id`. Postgres RLS (`tenantIsolationSql` in `src/lib/db/rls.ts`) is defence in depth — `FORCE ROW LEVEL SECURITY` so even the table owner cannot skip it. Apply that SQL in the same migration that creates a new tenant table. Product tables include `document_families`, `document_types`, `document_type_versions`, `instances`, `assets`, plus stub `notifications` and `ingest_jobs`. JSONB holds schema/template/answers. Unique `(organization_id, slug)` on types. Instance rows cannot point at a missing version. A query with no org context throws; it must not return all rows.
+Tenant isolation: every business table gets `organization_id`. App queries go through `withOrganization(orgId, …)` (`SET LOCAL app.organization_id`) plus an `eq` on `organization_id`. Postgres RLS (`tenantIsolationSql` in `src/lib/db/rls.ts`) is defence in depth — `FORCE ROW LEVEL SECURITY` plus `app_current_organization_id()` so a missing org GUC raises instead of returning every row. The Docker `dynadoc` user is a superuser and would still bypass RLS, so the app session role is `dynadoc_app` (`DATABASE_APP_ROLE`, default) while migrations use `DATABASE_MIGRATE_URL` as the owner. Apply that SQL in the same migration that creates a new tenant table. Product tables include `document_families`, `document_types`, `document_type_versions`, `instances`, `assets`, plus stub `notifications` and `ingest_jobs`. JSONB holds schema/template/answers. Unique `(organization_id, slug)` on types. Instance rows cannot point at a missing version. A query with no org context throws; it must not return all rows.
 
 Local object storage is MinIO (S3-compatible) so the same client works with Cloudflare R2 or AWS S3 by changing `S3_ENDPOINT` (and `S3_FORCE_PATH_STYLE=false` on AWS if needed). Helpers return object **keys** only; bytes stay in the bucket.
 
-The document resolver is a later ticket. Placeholder folders: `src/lib/resolver`, `src/types`.
+Form, template, and style JSON is validated with Zod in `src/types/document-type.ts` (`schemaVersion`, expression AST with `eq`/`in`/`and`/`or`/`not`/`exists` only — no JavaScript). Import can use `documentTypeVersionJsonSchema()`.
+
+The document resolver is a later ticket. Placeholder folder: `src/lib/resolver`.

@@ -28,6 +28,7 @@ export async function withOrganization<T>(
   const id = requireOrganizationId(organizationId);
   const db = getDb();
   return db.transaction(async (tx) => {
+    // is_local = true → SET LOCAL, so the GUC lasts only for this transaction.
     await tx.execute(sql`select set_config('app.organization_id', ${id}, true)`);
     return callback(tx as unknown as Database);
   });

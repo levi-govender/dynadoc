@@ -13,10 +13,7 @@ test("tenantIsolationSql uses SET LOCAL-compatible current_setting", () => {
   const sql = tenantIsolationSql("tenant_records");
   assert.match(sql, /ENABLE ROW LEVEL SECURITY/);
   assert.match(sql, /FORCE ROW LEVEL SECURITY/);
-  assert.match(
-    sql,
-    /organization_id = current_setting\('app.organization_id'\)::uuid/,
-  );
+  assert.match(sql, /organization_id = app_current_organization_id\(\)/);
   for (const tableName of TENANT_RLS_TABLES) {
     assert.match(tenantIsolationSql(tableName), new RegExp(`"${tableName}"`));
   }
