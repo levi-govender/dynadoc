@@ -19,8 +19,7 @@ import {
   updateTextInline,
   type BlockType,
 } from "@/lib/document-types/template";
-import { GroupActivationCycleError, resolveDocument } from "@/lib/resolver/resolve";
-import type { Answers } from "@/lib/expr/evaluate";
+import { resolvedBlockText, type StudioResolve } from "@/lib/document-types/structure-preview";
 import { cn } from "@/lib/utils";
 import type {
   Block,
@@ -42,34 +41,31 @@ const BLOCK_LABELS: Record<BlockType, string> = {
 
 type Props = {
   snapshot: DocumentTypeVersionSnapshot;
-  sampleAnswers: Answers;
+  resolved: StudioResolve;
   selectedFieldId: string | null;
   onChange: (next: (current: Template) => Template) => void;
 };
 
 export function StudioBlockCanvas({
   snapshot,
-  sampleAnswers,
+  resolved,
   selectedFieldId,
   onChange,
 }: Props) {
   const template = snapshot.template;
-  let includedIds = new Set<string>();
-  let resolvedText = new Map<string, string>();
-  try {
-    const resolved = resolveDocument(snapshot, sampleAnswers);
-    includedIds = new Set(resolved.document.blocks.map((block) => block.id));
-    resolvedText = new Map(
-      resolved.document.blocks.map((block) => [
-        block.id,
-        (block.children ?? []).map((child) => child.text).join(""),
-      ]),
-    );
-  } catch (error) {
-    if (!(error instanceof GroupActivationCycleError)) {
-      throw error;
-    }
-  }
+  const includedIds = new Set(
+    resolved.ok
+      ? resolved.result.document.blocks.map((block) => block.id)
+      : [],
+  );
+  const resolvedText = new Map(
+    resolved.ok
+      ? resolved.result.document.blocks.map((block) => [
+          block.id,
+          resolvedBlockText(resolved.result, block.id) ?? "",
+        ])
+      : [],
+  );
 
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-zinc-100">
