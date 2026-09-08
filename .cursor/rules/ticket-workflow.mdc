@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Ticket workflow
 
-One Notion ticket per branch. Stop after a summary so the user can review. Do not commit until they approve. Never push or open a PR.
+One Notion ticket per branch. Stop after a summary so the user can review. Do not commit until they approve. Never push.
 
 ## Pick up
 
@@ -19,6 +19,7 @@ One Notion ticket per branch. Stop after a summary so the user can review. Do no
 
 - Branch: `feat/<short-slug>` from latest `main` (orphan branch if the repo has no commits yet).
 - Stay inside the ticket. No auth/DB on the scaffold ticket, etc.
+- Never commit `.env` files, including `.env.example`.
 - If a ticket adds a new way to run or test the app, update the root `Makefile` and `make help`.
 - Test what you wrote (unit, `make check` / lint, `make health`, browser if UI). App must still run.
 - Do **not** mark the ticket **Done** until the PR is merged.
@@ -27,4 +28,4 @@ One Notion ticket per branch. Stop after a summary so the user can review. Do no
 
 Write a short summary: ticket, branch, what landed, how you tested, what you did not do. Then wait.
 
-When the user approves: **commit on the feature branch**. Never `git push`, `git pull`, or `gh pr create` — the user does those in their own Cursor terminal so they can enter an SSH passphrase. After the commit, print the exact commands for them (usually `git push -u origin HEAD`). After they merge, set Stage to **Done**.
+When the user approves: **commit on the feature branch**. Never `git push` or `git pull`. After the commit, print `git push -u origin HEAD` for their terminal. **After they say they have pushed**, try `gh pr create` into `main`. If GitHub CLI needs login, stop and give them the compare URL instead. After they merge, set Stage to **Done**.
