@@ -10,6 +10,8 @@ import {
   DocumentTypeNotFoundError,
   getDocumentType,
 } from "@/lib/document-types/versions";
+import { StudioControlPanel } from "@/components/studio-control-panel";
+import { emptyDraftSnapshot } from "@/lib/document-types/defaults";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -58,9 +60,8 @@ export default async function StudioDraftPage({
 
   const snapshot =
     type.draftSnapshot == null
-      ? null
+      ? emptyDraftSnapshot()
       : parseDocumentTypeVersionSnapshot(type.draftSnapshot);
-  const groupTitle = snapshot?.formSchema.groups[0]?.title ?? "Details";
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-8">
@@ -70,11 +71,12 @@ export default async function StudioDraftPage({
       </Link>
       <h1 className="text-xl font-semibold">{type.name}</h1>
       <p className="text-sm text-muted-foreground">
-        Draft {type.slug} · {type.status} · default group “{groupTitle}”
+        Draft {type.slug} · {type.status}
       </p>
-      <p className="text-sm">
-        Field editing and the block canvas land in later tickets.
-      </p>
+      <StudioControlPanel
+        documentTypeId={type.id}
+        initialSnapshot={snapshot}
+      />
     </div>
   );
 }
