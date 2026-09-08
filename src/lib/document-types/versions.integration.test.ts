@@ -123,7 +123,11 @@ test("publish freezes a version; later draft edits do not change generate JSON",
       organizationId: org.id,
       documentTypeId: type.id,
       createdBy: author.id,
-      answers: {},
+      answers: {
+        employmentType: "contractor",
+        jobTitle: "Engineer",
+        startDate: "2026-04-01",
+      },
     });
     assert.equal(
       generated.snapshot.formSchema.groups[0]?.title,
