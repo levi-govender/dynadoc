@@ -13,7 +13,7 @@
     "db:studio": "drizzle-kit studio",
     "db:smoke": "tsx src/lib/db/smoke.ts",
     "storage:smoke": "tsx src/lib/storage/smoke.ts",
-    "test": "tsx --test src/lib/storage/keys.test.ts src/lib/auth/organizations.test.ts src/lib/auth/roles.test.ts src/lib/db/tenant.test.ts src/lib/db/tenant.integration.test.ts src/lib/db/schema.fk.test.ts src/types/document-type.test.ts src/lib/document-types/versions.test.ts src/lib/document-types/versions.integration.test.ts src/lib/expr/evaluate.test.ts src/lib/resolver/resolve.test.ts src/lib/document-types/defaults.test.ts src/lib/document-types/create.integration.test.ts src/lib/document-types/form-schema.test.ts src/lib/document-types/form-schema.integration.test.ts"
+    "test": "tsx --test src/lib/storage/keys.test.ts src/lib/auth/organizations.test.ts src/lib/auth/roles.test.ts src/lib/db/tenant.test.ts src/lib/db/tenant.integration.test.ts src/lib/db/schema.fk.test.ts src/types/document-type.test.ts src/lib/document-types/versions.test.ts src/lib/document-types/versions.integration.test.ts src/lib/expr/evaluate.test.ts src/lib/resolver/resolve.test.ts src/lib/document-types/defaults.test.ts src/lib/document-types/create.integration.test.ts src/lib/document-types/form-schema.test.ts src/lib/document-types/form-schema.integration.test.ts src/lib/document-types/branching.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.901.0",
