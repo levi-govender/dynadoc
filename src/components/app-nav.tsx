@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { canEditDraft, canGenerateInstance } from "@/lib/auth/roles";
+import { canEditDraft, canGenerateInstance, canManageOrganization } from "@/lib/auth/roles";
 import type { MembershipRole } from "@/lib/db/schema";
 
 export function AppNav({ role }: { role?: MembershipRole }) {
@@ -16,6 +16,11 @@ export function AppNav({ role }: { role?: MembershipRole }) {
       {role && canGenerateInstance(role) ? (
         <Link className="underline" href="/fill">
           Fill
+        </Link>
+      ) : null}
+      {role && canManageOrganization(role) ? (
+        <Link className="underline" href="/org">
+          Organization
         </Link>
       ) : null}
     </nav>
