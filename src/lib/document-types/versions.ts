@@ -10,6 +10,7 @@ import {
   parseDocumentTypeVersionSnapshot,
   type DocumentTypeVersionSnapshot,
 } from "@/types/document-type";
+import { GroupActivationCycleError, resolveDocument } from "@/lib/resolver/resolve";
 
 export class DocumentTypeNotFoundError extends Error {
   constructor(message = "Document type not found") {
@@ -249,6 +250,7 @@ export async function createInstanceFromPublished(args: {
     published: published.snapshot,
     draft,
   });
+  const resolved = resolveDocument(snapshot, args.answers);
 
   return withOrganization(args.organizationId, async (db) => {
     const [instance] = await db
@@ -256,15 +258,20 @@ export async function createInstanceFromPublished(args: {
       .values({
         organizationId: args.organizationId,
         documentTypeVersionId: published.version.id,
-        answers: args.answers ?? {},
-        resolvedAst: { pending: true },
+        answers: resolved.answers,
+        resolvedAst: resolved.document,
         createdBy: args.createdBy,
       })
       .returning();
     if (!instance) {
       throw new Error("Failed to create instance");
     }
-    return { instance, snapshot, version: published.version };
+    return {
+      instance,
+      snapshot,
+      version: published.version,
+      resolved,
+    };
   });
 }
 
@@ -274,6 +281,7 @@ export function isDocumentTypeClientError(error: unknown) {
     error instanceof EmptyDraftError ||
     error instanceof UnpublishedTypeError ||
     error instanceof PublishedVersionImmutableError ||
+    error instanceof GroupActivationCycleError ||
     error instanceof ZodError
   );
 }
@@ -288,7 +296,11 @@ export function documentTypeErrorStatus(error: unknown): number {
   if (error instanceof UnpublishedTypeError) {
     return 409;
   }
-  if (error instanceof EmptyDraftError || error instanceof ZodError) {
+  if (
+    error instanceof EmptyDraftError ||
+    error instanceof ZodError ||
+    error instanceof GroupActivationCycleError
+  ) {
     return 400;
   }
   return 500;

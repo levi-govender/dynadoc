@@ -19,6 +19,11 @@
                 "label": "Permanent",
                 "activatesGroupIds": ["permanentTerms"]
               },
+              {
+                "value": "fixed-term",
+                "label": "Fixed-term",
+                "activatesGroupIds": ["fixedTerm"]
+              },
               { "value": "contractor", "label": "Contractor" }
             ]
           },
@@ -53,6 +58,23 @@
             "id": "noticeWeeks",
             "type": "number",
             "label": "Notice period (weeks)",
+            "required": true
+          }
+        ]
+      },
+      {
+        "id": "fixedTerm",
+        "title": "Fixed-term",
+        "visibleWhen": {
+          "op": "eq",
+          "field": "employmentType",
+          "value": "fixed-term"
+        },
+        "fields": [
+          {
+            "id": "endDate",
+            "type": "date",
+            "label": "End date",
             "required": true
           }
         ]
@@ -102,6 +124,20 @@
           { "type": "text", "text": "Notice is " },
           { "type": "bind", "field": "noticeWeeks" },
           { "type": "text", "text": " weeks." }
+        ]
+      },
+      {
+        "id": "end",
+        "type": "paragraph",
+        "includeWhen": {
+          "op": "eq",
+          "field": "employmentType",
+          "value": "fixed-term"
+        },
+        "children": [
+          { "type": "text", "text": "This agreement ends on " },
+          { "type": "bind", "field": "endDate" },
+          { "type": "text", "text": "." }
         ]
       },
       { "id": "sign", "type": "signature" }

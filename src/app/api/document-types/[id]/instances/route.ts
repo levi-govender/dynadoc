@@ -32,12 +32,13 @@ export async function POST(
         answers = body.answers;
       }
     }
-    const { instance, snapshot, version } = await createInstanceFromPublished({
-      organizationId: membership.organizationId,
-      documentTypeId: id,
-      createdBy: session.user.id,
-      answers,
-    });
+    const { instance, snapshot, version, resolved } =
+      await createInstanceFromPublished({
+        organizationId: membership.organizationId,
+        documentTypeId: id,
+        createdBy: session.user.id,
+        answers,
+      });
     return NextResponse.json(
       {
         id: instance.id,
@@ -45,6 +46,9 @@ export async function POST(
         documentTypeVersionId: version.id,
         organizationId: membership.organizationId,
         snapshot,
+        answers: resolved.answers,
+        resolved: resolved.document,
+        warnings: resolved.warnings,
       },
       { status: 201 },
     );
