@@ -70,19 +70,104 @@ export function moveBlock(
   return { ...template, blocks };
 }
 
+function mapBlock(
+  template: Template,
+  blockId: string,
+  update: (block: Block) => Block,
+): Template {
+  return {
+    ...template,
+    blocks: template.blocks.map((block) =>
+      block.id === blockId ? update(block) : block,
+    ),
+  };
+}
+
 export function setBlockText(
   template: Template,
   blockId: string,
   text: string,
 ): Template {
-  return {
-    ...template,
-    blocks: template.blocks.map((block) =>
-      block.id === blockId
-        ? { ...block, children: [{ type: "text" as const, text }] }
-        : block,
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: [{ type: "text", text }],
+  }));
+}
+
+export function updateTextInline(
+  template: Template,
+  blockId: string,
+  index: number,
+  text: string,
+): Template {
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: (block.children ?? []).map((child, childIndex) =>
+      childIndex === index && child.type === "text" ? { ...child, text } : child,
     ),
-  };
+  }));
+}
+
+export function appendBind(
+  template: Template,
+  blockId: string,
+  fieldId: string,
+): Template {
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: [...(block.children ?? []), { type: "bind", field: fieldId }],
+  }));
+}
+
+export function appendVariantMap(
+  template: Template,
+  blockId: string,
+  fieldId: string,
+  optionValues: string[],
+): Template {
+  const variants: Record<string, string> = {};
+  for (const value of optionValues) {
+    variants[value] = "";
+  }
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: [
+      ...(block.children ?? []),
+      { type: "variantMap", field: fieldId, variants },
+    ],
+  }));
+}
+
+export function setVariantMapEntry(
+  template: Template,
+  blockId: string,
+  index: number,
+  optionValue: string,
+  text: string,
+): Template {
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: (block.children ?? []).map((child, childIndex) => {
+      if (childIndex !== index || child.type !== "variantMap") {
+        return child;
+      }
+      return {
+        ...child,
+        variants: { ...child.variants, [optionValue]: text },
+      };
+    }),
+  }));
+}
+
+export function removeInline(
+  template: Template,
+  blockId: string,
+  index: number,
+): Template {
+  return mapBlock(template, blockId, (block) => ({
+    ...block,
+    children: (block.children ?? []).filter((_, childIndex) => childIndex !== index),
+  }));
 }
 
 export function childrenArePlainText(children: Inline[] | undefined) {

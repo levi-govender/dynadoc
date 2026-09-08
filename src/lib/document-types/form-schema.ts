@@ -238,3 +238,14 @@ export function deleteSelectOption(
 export function parseFormSchema(input: unknown): FormSchema {
   return formSchemaSchema.parse(input);
 }
+
+export function listFormFields(form: FormSchema) {
+  return form.groups.flatMap((group) =>
+    group.fields.map((field) => ({
+      id: field.id,
+      label: field.label,
+      type: field.type,
+      options: field.type === "select" ? field.options : undefined,
+    })),
+  );
+}
