@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { IngestClassification } from "@/lib/ingest/classify";
-import { emptyDraftSnapshot, slugFromName } from "@/lib/document-types/defaults";
+import { slugFromName } from "@/lib/document-types/defaults";
 import type { FamilyBundle } from "@/lib/document-types/import";
-import {
-  parseDocumentTypeVersionSnapshot,
-  type DocumentTypeVersionSnapshot,
-} from "@/types/document-type";
+import { stripLetterhead } from "@/lib/ingest/extract";
+import { buildDraftTreeSnapshot } from "@/lib/ingest/draft-tree";
 
 export type IngestCluster = {
   id: string;
@@ -47,24 +45,7 @@ export class IngestClusterError extends Error {
   }
 }
 
-export function stripLetterhead(text: string) {
-  const lines = text.split(/\r?\n/);
-  let skip = 0;
-  while (skip < Math.min(8, lines.length)) {
-    const line = lines[skip]!.trim().toLowerCase();
-    if (
-      !line ||
-      line.includes("logo") ||
-      line.includes("letterhead") ||
-      /pty ltd|incorporated|\bllc\b|\bstreet\b|\bavenue\b/.test(line)
-    ) {
-      skip += 1;
-      continue;
-    }
-    break;
-  }
-  return lines.slice(skip).join("\n");
-}
+export { stripLetterhead } from "@/lib/ingest/extract";
 
 function titleCase(value: string) {
   return value.replace(/^\w/, (char) => char.toUpperCase());
@@ -127,42 +108,21 @@ function discriminatorFromTypes(types: string[]): IngestDiscriminator | null {
   };
 }
 
-function memberSnapshot(args: {
-  name: string;
-  branchTypes?: string[];
-  discriminatorId?: string;
-}): DocumentTypeVersionSnapshot {
-  const snapshot = emptyDraftSnapshot();
-  const heading = snapshot.template.blocks[0];
-  if (heading?.children?.[0] && heading.children[0].type === "text") {
-    heading.children[0].text = args.name;
-  }
-  for (const type of args.branchTypes ?? []) {
-    const groupId = randomUUID();
-    snapshot.formSchema.groups.push({
-      id: groupId,
-      title: titleCase(type),
-      visibleWhen: args.discriminatorId
-        ? { op: "eq", field: args.discriminatorId, value: type }
-        : undefined,
-      fields: [],
-    });
-    snapshot.template.blocks.push({
-      id: randomUUID(),
-      type: "paragraph",
-      includeWhen: args.discriminatorId
-        ? { op: "eq", field: args.discriminatorId, value: type }
-        : undefined,
-      children: [{ type: "text", text: `${titleCase(type)} wording` }],
-    });
-  }
-  return parseDocumentTypeVersionSnapshot(snapshot);
+function textsForCluster(
+  cluster: IngestCluster,
+  files: ClusterSourceFile[],
+) {
+  const byId = new Map(files.map((file) => [file.id, file]));
+  return cluster.fileIds
+    .map((id) => byId.get(id)?.extractedText)
+    .filter((text): text is string => Boolean(text));
 }
 
 export function buildFamilyDraft(args: {
   clusters: IngestCluster[];
   discriminator: IngestDiscriminator | null;
   sharedFields: IngestSharedField[];
+  files: ClusterSourceFile[];
 }): FamilyBundle {
   const branched =
     args.clusters.length === 1 && args.clusters[0]!.documentTypes.length > 1;
@@ -171,8 +131,9 @@ export function buildFamilyDraft(args: {
         {
           name: args.clusters[0]!.documentTypes.map(titleCase).join(" / "),
           slug: slugFromName(args.clusters[0]!.documentTypes.join("-")) || "member",
-          snapshot: memberSnapshot({
+          snapshot: buildDraftTreeSnapshot({
             name: args.clusters[0]!.documentTypes.map(titleCase).join(" / "),
+            texts: textsForCluster(args.clusters[0]!, args.files),
             branchTypes: args.clusters[0]!.documentTypes,
             discriminatorId: args.discriminator?.id,
           }),
@@ -183,7 +144,10 @@ export function buildFamilyDraft(args: {
         return {
           name: titleCase(type),
           slug: slugFromName(type) || "member",
-          snapshot: memberSnapshot({ name: titleCase(type) }),
+          snapshot: buildDraftTreeSnapshot({
+            name: titleCase(type),
+            texts: textsForCluster(cluster, args.files),
+          }),
         };
       });
   return {
@@ -244,6 +208,7 @@ export function proposeIngestClusters(
       clusters,
       discriminator,
       sharedFields: shared,
+      files,
     }),
     published: false,
   };
@@ -252,6 +217,7 @@ export function proposeIngestClusters(
 export function mergeIngestClusters(
   state: IngestClusterState,
   clusterIds: string[],
+  files: ClusterSourceFile[] = [],
 ): IngestClusterState {
   if (clusterIds.length !== 2) {
     throw new IngestClusterError("Merge exactly two clusters");
@@ -284,6 +250,7 @@ export function mergeIngestClusters(
       clusters,
       discriminator,
       sharedFields: state.sharedFields,
+      files,
     }),
     published: false,
   };
@@ -333,6 +300,7 @@ export function splitIngestCluster(
       clusters,
       discriminator,
       sharedFields: state.sharedFields,
+      files,
     }),
     published: false,
   };

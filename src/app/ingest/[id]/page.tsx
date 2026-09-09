@@ -82,6 +82,7 @@ export default async function IngestJobPage({
           canCluster={loaded.gatesApplied}
           clusterState={loaded.clusterState}
           jobId={loaded.job.id}
+          savedDrafts={loaded.savedDrafts}
         />
       ) : null}
       <ul className="flex max-w-xl flex-col gap-2 text-sm">

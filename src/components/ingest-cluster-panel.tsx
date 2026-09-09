@@ -18,15 +18,21 @@ export function IngestClusterPanel({
   jobId,
   canCluster,
   clusterState,
+  savedDrafts,
 }: {
   jobId: string;
   canCluster: boolean;
   clusterState: IngestClusterState | null;
+  savedDrafts: {
+    familyId: string;
+    types: Array<{ id: string; slug: string; status: string }>;
+  } | null;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [reviewed, setReviewed] = useState(false);
 
   function run(path: string, body?: unknown) {
     setPending(true);
@@ -123,6 +129,47 @@ export function IngestClusterPanel({
               ? ` · shared ${clusterState.sharedFields.map((field) => field.label).join(", ")}`
               : ""}
           </p>
+          <ul className="text-xs text-muted-foreground">
+            {clusterState.familyDraft.members.map((member) => {
+              const maps = member.snapshot.template.blocks.flatMap((block) =>
+                (block.children ?? []).filter((child) => child.type === "variantMap"),
+              );
+              return (
+                <li key={member.slug}>
+                  {member.name}: {member.snapshot.template.blocks.length} blocks
+                  {maps.length ? ` · ${maps.length} variant map(s)` : ""}
+                </li>
+              );
+            })}
+          </ul>
+          {savedDrafts ? (
+            <p className="text-sm">
+              Saved draft types:{" "}
+              {savedDrafts.types
+                .map((type) => `${type.slug} (${type.status})`)
+                .join(", ")}
+            </p>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  checked={reviewed}
+                  onChange={(event) => setReviewed(event.target.checked)}
+                  type="checkbox"
+                />
+                I reviewed this draft tree. Do not publish.
+              </label>
+              <Button
+                disabled={pending || !reviewed}
+                onClick={() =>
+                  run(`/api/ingest-jobs/${jobId}/drafts`, { confirmed: true })
+                }
+                type="button"
+              >
+                Save as draft types
+              </Button>
+            </>
+          )}
         </>
       ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
