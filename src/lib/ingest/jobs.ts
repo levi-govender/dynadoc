@@ -26,6 +26,7 @@ import {
   splitIngestCluster,
   type IngestClusterState,
 } from "@/lib/ingest/cluster";
+import { applyIngestReview } from "@/lib/ingest/review";
 import { importFromJson } from "@/lib/document-types/import";
 import { notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
@@ -403,6 +404,7 @@ export async function saveIngestJobDrafts(args: {
   organizationId: string;
   jobId: string;
   confirmed: boolean;
+  rejectedBlockIds?: string[];
 }) {
   if (!args.confirmed) {
     throw new IngestUploadError(
@@ -416,9 +418,13 @@ export async function saveIngestJobDrafts(args: {
   if (loaded.savedDrafts) {
     throw new IngestUploadError("Draft types were already saved for this job");
   }
+  const familyDraft = applyIngestReview({
+    familyDraft: loaded.clusterState.familyDraft,
+    rejectedBlockIds: args.rejectedBlockIds ?? [],
+  });
   const imported = await importFromJson({
     organizationId: args.organizationId,
-    payload: loaded.clusterState.familyDraft,
+    payload: familyDraft,
   });
   if (imported.kind !== "family") {
     throw new IngestUploadError("Ingest draft must be a family bundle");

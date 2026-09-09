@@ -9,6 +9,7 @@ import { z } from "zod";
 
 const bodySchema = z.object({
   confirmed: z.literal(true),
+  rejectedBlockIds: z.array(z.string().min(1)).optional(),
 });
 
 export async function POST(
@@ -28,6 +29,7 @@ export async function POST(
       organizationId: membership.organizationId,
       jobId: id,
       confirmed: body.confirmed,
+      rejectedBlockIds: body.rejectedBlockIds,
     });
     return NextResponse.json(serializeIngestJob(loaded));
   } catch (error) {
