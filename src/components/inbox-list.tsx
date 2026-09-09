@@ -36,7 +36,8 @@ function holdoutFiles(payload: unknown) {
     return [
       {
         fileId: record.fileId,
-        filename: typeof record.filename === "string" ? record.filename : "file",
+        filename:
+          typeof record.filename === "string" ? record.filename : "file",
         category:
           typeof record.category === "string" ? record.category : "unknown",
         documentType:
@@ -74,7 +75,6 @@ function summary(payload: unknown) {
 
 export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
   const [items, setItems] = useState(initialItems);
-  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function typeLabel(type: string) {
@@ -89,40 +89,14 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
 
   return (
     <div className="flex max-w-xl flex-col gap-4">
-      <Button
-        disabled={pending}
-        onClick={() => {
-          setPending(true);
-          void fetch("/api/notifications", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              type: "generic",
-              payload: { message: "Inbox stub" },
-            }),
-          }).then(async (response) => {
-            const body: unknown = await response.json().catch(() => null);
-            setPending(false);
-            if (
-              !response.ok ||
-              !body ||
-              typeof body !== "object" ||
-              !("notification" in body)
-            ) {
-              return;
-            }
-            const notification = (body as { notification: InboxItem })
-              .notification;
-            setItems((current) => [notification, ...current]);
-          });
-        }}
-        type="button"
-      >
-        Send test notification
-      </Button>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No notifications yet.</p>
+        <div className="rounded-md border border-dashed px-6 py-12 text-center">
+          <p className="font-medium">Inbox is clear</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Holdout ingest files and re-review notices will show up here.
+          </p>
+        </div>
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
@@ -139,7 +113,8 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                     return (
                       <div className="mt-2 text-sm" key={file.fileId}>
                         <p>
-                          {file.filename} · {file.documentType} / {file.category}
+                          {file.filename} · {file.documentType} /{" "}
+                          {file.category}
                           {file.confidence != null
                             ? ` · ${Math.round(file.confidence * 100)}%`
                             : ""}
@@ -188,7 +163,10 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                                     setItems((current) =>
                                       current.map((row) =>
                                         row.id === item.id
-                                          ? { ...row, readAt: new Date().toISOString() }
+                                          ? {
+                                              ...row,
+                                              readAt: new Date().toISOString(),
+                                            }
                                           : row,
                                       ),
                                     );
@@ -227,7 +205,10 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                                   setItems((current) =>
                                     current.map((row) =>
                                       row.id === item.id
-                                        ? { ...row, readAt: new Date().toISOString() }
+                                        ? {
+                                            ...row,
+                                            readAt: new Date().toISOString(),
+                                          }
                                         : row,
                                     ),
                                   );
@@ -256,9 +237,9 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                     void fetch(`/api/notifications/${item.id}`, {
                       method: "PATCH",
                     }).then(async (response) => {
-                      const body: unknown = await response.json().catch(
-                        () => null,
-                      );
+                      const body: unknown = await response
+                        .json()
+                        .catch(() => null);
                       if (
                         !response.ok ||
                         !body ||
@@ -270,9 +251,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                       const next = (body as { notification: InboxItem })
                         .notification;
                       setItems((current) =>
-                        current.map((row) =>
-                          row.id === next.id ? next : row,
-                        ),
+                        current.map((row) => (row.id === next.id ? next : row)),
                       );
                     });
                   }}

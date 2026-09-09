@@ -1,5 +1,6 @@
 import { InstanceEsignCell } from "@/components/instance-esign-cell";
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { auth } from "@/lib/auth";
@@ -36,12 +37,11 @@ export default async function InstanceHistoryPage({
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
             History is only available to operators, authors, and org admins.
           </p>
-        </div>
+        </AppChrome>
       );
     }
     throw error;
@@ -57,10 +57,15 @@ export default async function InstanceHistoryPage({
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Generated documents</h1>
-      <form className="flex flex-wrap items-end gap-3" method="get">
+    <AppChrome email={session.user.email} role={membership.role} wide>
+      <PageHeader
+        description="Issued files are never overwritten. Download PDF or Word, or send the PDF for e-sign."
+        title="History"
+      />
+      <form
+        className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-4"
+        method="get"
+      >
         <label className="flex flex-col gap-1 text-sm">
           Type
           <select
@@ -87,80 +92,83 @@ export default async function InstanceHistoryPage({
         <Button type="submit">Filter</Button>
       </form>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No generated documents yet.
-        </p>
+        <EmptyState
+          description="Generate a document from Fill. Each generate adds a row here."
+          title="No generated documents yet"
+        />
       ) : (
-        <table className="max-w-6xl text-left text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="py-2 pr-4">Type</th>
-              <th className="py-2 pr-4">Version</th>
-              <th className="py-2 pr-4">When</th>
-              <th className="py-2 pr-4">Who</th>
-              <th className="py-2">PDF</th>
-              <th className="py-2">Word</th>
-              <th className="py-2">E-sign</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr className="border-b" key={row.id}>
-                <td className="py-2 pr-4">
-                  {row.typeName}{" "}
-                  <span className="text-muted-foreground">
-                    ({row.typeSlug})
-                  </span>
-                </td>
-                <td className="py-2 pr-4">v{row.versionNumber}</td>
-                <td className="py-2 pr-4">
-                  {row.createdAt.toISOString().replace("T", " ").slice(0, 16)}{" "}
-                  UTC
-                </td>
-                <td className="py-2 pr-4">
-                  {row.createdByName ?? row.createdByEmail ?? "Unknown"}
-                </td>
-                <td className="py-2 pr-4">
-                  <Link
-                    className="underline"
-                    href={`/api/instances/${row.id}/pdf`}
-                  >
-                    PDF
-                  </Link>
-                </td>
-                <td className="py-2 pr-4">
-                  <Link
-                    className="underline"
-                    href={`/api/instances/${row.id}/docx`}
-                  >
-                    Word
-                  </Link>
-                </td>
-                <td className="py-2">
-                  <InstanceEsignCell
-                    envelopeId={row.esignEnvelopeId}
-                    instanceId={row.id}
-                    slots={(() => {
-                      try {
-                        return slotsForTheme(row.styleTheme, {}).map(
-                          (slot) => ({
-                            id: slot.id,
-                            partyLabel: slot.partyLabel,
-                            kind: slot.kind,
-                          }),
-                        );
-                      } catch {
-                        return [];
-                      }
-                    })()}
-                    status={row.esignStatus}
-                  />
-                </td>
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/50 text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium">Type</th>
+                <th className="px-4 py-2 font-medium">Version</th>
+                <th className="px-4 py-2 font-medium">When</th>
+                <th className="px-4 py-2 font-medium">Who</th>
+                <th className="px-4 py-2 font-medium">PDF</th>
+                <th className="px-4 py-2 font-medium">Word</th>
+                <th className="px-4 py-2 font-medium">E-sign</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr className="border-t" key={row.id}>
+                  <td className="px-4 py-3">
+                    {row.typeName}{" "}
+                    <span className="text-muted-foreground">
+                      ({row.typeSlug})
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">v{row.versionNumber}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {row.createdAt.toISOString().replace("T", " ").slice(0, 16)}{" "}
+                    UTC
+                  </td>
+                  <td className="px-4 py-3">
+                    {row.createdByName ?? row.createdByEmail ?? "Unknown"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      className="font-medium text-primary hover:underline"
+                      href={`/api/instances/${row.id}/pdf`}
+                    >
+                      PDF
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      className="font-medium text-primary hover:underline"
+                      href={`/api/instances/${row.id}/docx`}
+                    >
+                      Word
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    <InstanceEsignCell
+                      envelopeId={row.esignEnvelopeId}
+                      instanceId={row.id}
+                      slots={(() => {
+                        try {
+                          return slotsForTheme(row.styleTheme, {}).map(
+                            (slot) => ({
+                              id: slot.id,
+                              partyLabel: slot.partyLabel,
+                              kind: slot.kind,
+                            }),
+                          );
+                        } catch {
+                          return [];
+                        }
+                      })()}
+                      status={row.esignStatus}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-    </div>
+    </AppChrome>
   );
 }

@@ -1,4 +1,5 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -24,33 +25,44 @@ export default async function FillIndexPage() {
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Fill is only available to operators, authors, and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Fill is only available to operators, authors, and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
   }
   const types = await listPublishedDocumentTypes(membership.organizationId);
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Fill published types</h1>
+    <AppChrome email={session.user.email} role={membership.role}>
+      <PageHeader
+        description="Only published versions appear here. Each generate creates a new instance."
+        title="Fill"
+      />
       {types.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No published types yet.</p>
+        <EmptyState
+          description="Ask an author to publish a document type, then return here to generate."
+          title="Nothing published yet"
+        />
       ) : (
-        <ul className="flex max-w-lg flex-col gap-2">
+        <ul className="grid gap-2">
           {types.map((type) => (
             <li key={type.id}>
-              <Link className="underline" href={`/fill/${type.id}`}>
-                {type.name}
+              <Link
+                className="flex items-center justify-between rounded-md border bg-card px-4 py-3 transition-colors hover:bg-muted/40"
+                href={`/fill/${type.id}`}
+              >
+                <span className="font-medium">{type.name}</span>
+                <span className="text-sm text-muted-foreground">
+                  {type.slug}
+                </span>
               </Link>
-              <span className="text-muted-foreground"> ({type.slug})</span>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </AppChrome>
   );
 }

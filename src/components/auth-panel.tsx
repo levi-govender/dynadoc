@@ -5,8 +5,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth/client";
-
+import { formatRole } from "@/lib/auth/roles";
 import type { MembershipRole } from "@/lib/db/schema";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type Props = {
   signedIn: boolean;
@@ -17,6 +24,7 @@ type Props = {
 
 export function AuthPanel({ signedIn, email, organizationName, role }: Props) {
   const router = useRouter();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [formEmail, setFormEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,65 +68,93 @@ export function AuthPanel({ signedIn, email, organizationName, role }: Props) {
     await refresh();
   }
 
-  async function onSignOut() {
-    setPending(true);
-    await authClient.signOut();
-    setPending(false);
-    await refresh();
-  }
-
   if (signedIn) {
     return (
-      <div className="flex w-full max-w-lg flex-col gap-3 rounded-xl border p-4 text-sm">
-        <p>
-          Signed in as <strong>{email}</strong>
-        </p>
-        <p>
-          Organization <strong>{organizationName}</strong> ({role})
-        </p>
-        <Button disabled={pending} onClick={() => void onSignOut()} type="button">
-          Sign out
-        </Button>
-      </div>
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <CardTitle>Workspace</CardTitle>
+          <CardDescription>
+            Signed in as {email}
+            {organizationName ? ` · ${organizationName}` : ""}
+            {role ? ` · ${formatRole(role)}` : ""}
+          </CardDescription>
+        </CardHeader>
+      </Card>
     );
   }
 
   return (
-    <form className="flex w-full max-w-lg flex-col gap-3 rounded-xl border p-4">
-      <Input
-        aria-label="Name"
-        onChange={(event) => setName(event.target.value)}
-        placeholder="Name"
-        value={name}
-      />
-      <Input
-        aria-label="Email"
-        onChange={(event) => setFormEmail(event.target.value)}
-        placeholder="Email"
-        type="email"
-        value={formEmail}
-      />
-      <Input
-        aria-label="Password"
-        onChange={(event) => setPassword(event.target.value)}
-        placeholder="Password (min 8 characters)"
-        type="password"
-        value={password}
-      />
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <div className="flex gap-2">
-        <Button disabled={pending} onClick={(event) => void onSignUp(event)} type="submit">
-          Sign up
-        </Button>
-        <Button
-          disabled={pending}
-          onClick={(event) => void onSignIn(event)}
-          type="button"
-          variant="outline"
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>
+          {mode === "signin" ? "Sign in" : "Create an account"}
+        </CardTitle>
+        <CardDescription>
+          {mode === "signin"
+            ? "Use your work email to continue."
+            : "Creates your organization. You can invite authors and operators next."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) =>
+            void (mode === "signup" ? onSignUp(event) : onSignIn(event))
+          }
         >
-          Sign in
-        </Button>
-      </div>
-    </form>
+          {mode === "signup" ? (
+            <label className="flex flex-col gap-1 text-sm">
+              Name
+              <Input
+                autoComplete="name"
+                onChange={(event) => setName(event.target.value)}
+                required
+                value={name}
+              />
+            </label>
+          ) : null}
+          <label className="flex flex-col gap-1 text-sm">
+            Email
+            <Input
+              autoComplete="email"
+              onChange={(event) => setFormEmail(event.target.value)}
+              required
+              type="email"
+              value={formEmail}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            Password
+            <Input
+              autoComplete={
+                mode === "signup" ? "new-password" : "current-password"
+              }
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          </label>
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          <Button disabled={pending} type="submit">
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setMode(mode === "signin" ? "signup" : "signin");
+            }}
+            type="button"
+            variant="ghost"
+          >
+            {mode === "signin"
+              ? "Need an account? Sign up"
+              : "Already have an account? Sign in"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

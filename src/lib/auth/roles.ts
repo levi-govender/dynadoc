@@ -32,6 +32,16 @@ export function canManageOrganization(role: MembershipRole) {
   return ORG_ADMIN_ROLES.includes(role);
 }
 
+export function formatRole(role: MembershipRole) {
+  if (role === "org_admin") {
+    return "Admin";
+  }
+  if (role === "author") {
+    return "Author";
+  }
+  return "Operator";
+}
+
 export function assertRole(
   membership: { role: MembershipRole },
   allowed: readonly MembershipRole[],

@@ -1,5 +1,13 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { IngestUploadForm } from "@/components/ingest-upload-form";
+import { EmptyState, PageHeader } from "@/components/page-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -25,10 +33,11 @@ export default async function IngestIndexPage() {
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Ingest is only available to authors and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Ingest is only available to authors and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -38,30 +47,50 @@ export default async function IngestIndexPage() {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Corpus ingest</h1>
-      <p className="text-sm text-muted-foreground">
-        Upload PDFs or DOCX, declare the expected category and mode. Jobs stay
-        uploaded until classify. Clustering does not run yet.
-      </p>
-      <IngestUploadForm />
+    <AppChrome email={session.user.email} role={membership.role}>
+      <PageHeader
+        description="Upload a corpus, classify, then cluster into draft types. Nothing publishes until you confirm."
+        title="Ingest"
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>New job</CardTitle>
+          <CardDescription>
+            PDF or DOCX. Jobs stay uploaded until you classify.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <IngestUploadForm />
+        </CardContent>
+      </Card>
       {jobs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No ingest jobs yet.</p>
+        <EmptyState
+          description="Start with a small set of the same document category."
+          title="No ingest jobs yet"
+        />
       ) : (
-        <ul className="flex max-w-lg flex-col gap-2 text-sm">
+        <ul className="grid gap-2">
           {jobs.map((job) => {
             const payload = job.payload as { category?: string; mode?: string };
             return (
               <li key={job.id}>
-                <Link className="underline" href={`/ingest/${job.id}`}>
-                  {payload.category ?? "job"} · {job.status}
+                <Link
+                  className="flex items-center justify-between rounded-md border bg-card px-4 py-3 text-sm transition-colors hover:bg-muted/40"
+                  href={`/ingest/${job.id}`}
+                >
+                  <span className="font-medium capitalize">
+                    {payload.category ?? "job"}
+                    {payload.mode ? ` · ${payload.mode}` : ""}
+                  </span>
+                  <span className="capitalize text-muted-foreground">
+                    {job.status}
+                  </span>
                 </Link>
               </li>
             );
           })}
         </ul>
       )}
-    </div>
+    </AppChrome>
   );
 }

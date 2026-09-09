@@ -1,6 +1,14 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { CreateDocumentTypeForm } from "@/components/create-document-type-form";
 import { ImportDocumentTypeForm } from "@/components/import-document-type-form";
+import { EmptyState, PageHeader } from "@/components/page-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -27,10 +35,11 @@ export default async function StudioPage() {
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Author Studio is only available to authors and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Author Studio is only available to authors and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -39,34 +48,65 @@ export default async function StudioPage() {
   const types = await listDocumentTypes(membership.organizationId);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Author Studio</h1>
+    <AppChrome email={session.user.email} role={membership.role}>
+      <PageHeader
+        description="Create a draft, import JSON, or open a type to edit and publish."
+        title="Author Studio"
+      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>New document type</CardTitle>
+            <CardDescription>
+              Opens a draft in Studio. Publish when operators should fill it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CreateDocumentTypeForm />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Import JSON</CardTitle>
+            <CardDescription>
+              Imports as a new draft. Never overwrites a published version.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ImportDocumentTypeForm />
+          </CardContent>
+        </Card>
+      </div>
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">New document type</h2>
-        <CreateDocumentTypeForm />
-      </section>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">Import JSON</h2>
-        <ImportDocumentTypeForm />
-      </section>
-      <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Types in this organization</h2>
         {types.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No document types yet.</p>
+          <EmptyState
+            description="Create a draft above or import a JSON bundle."
+            title="No document types yet"
+          />
         ) : (
-          <ul className="flex max-w-lg flex-col gap-2">
+          <ul className="grid gap-2">
             {types.map((type) => (
               <li key={type.id}>
-                <Link className="underline" href={`/studio/${type.id}`}>
-                  {type.name}
+                <Link
+                  className="flex items-center justify-between rounded-md border bg-card px-4 py-3 transition-colors hover:bg-muted/40"
+                  href={`/studio/${type.id}`}
+                >
+                  <span>
+                    <span className="font-medium">{type.name}</span>
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {type.slug}
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs capitalize text-muted-foreground">
+                    {type.status}
+                  </span>
                 </Link>
-                <span className="text-muted-foreground"> ({type.slug})</span>
               </li>
             ))}
           </ul>
         )}
       </section>
-    </div>
+    </AppChrome>
   );
 }

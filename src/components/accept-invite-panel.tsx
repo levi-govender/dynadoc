@@ -47,7 +47,7 @@ export function AcceptInvitePanel({
   }
 
   return (
-    <div className="flex max-w-lg flex-col gap-3 rounded-xl border p-4">
+    <div className="flex max-w-lg flex-col gap-3 rounded-md border p-4">
       <p className="text-sm">
         Join <strong>{organizationName}</strong> as <strong>{role}</strong> (
         {invitedEmail}).

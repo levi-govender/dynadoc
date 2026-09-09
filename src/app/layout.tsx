@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dynadoc",
-  description: "Dynamic document and PDF factory",
+  title: {
+    default: "Dynadoc",
+    template: "%s · Dynadoc",
+  },
+  description: "Author, fill, and issue documents for your organization.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +26,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex h-full min-h-full flex-col">{children}</body>
+      <body className="flex h-full min-h-full flex-col font-sans">
+        {children}
+      </body>
     </html>
   );
 }

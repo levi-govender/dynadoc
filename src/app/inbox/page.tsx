@@ -1,5 +1,6 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { InboxList } from "@/components/inbox-list";
+import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import { listNotifications, serializeNotification } from "@/lib/notifications";
@@ -20,14 +21,12 @@ export default async function InboxPage() {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Inbox</h1>
-      <p className="text-sm text-muted-foreground">
-        In-app notices for this account. Holdout rows include rereview actions
-        (no silent merge). Email is optional later using the same payload.
-      </p>
+    <AppChrome email={session.user.email} role={membership.role}>
+      <PageHeader
+        description="Holdout ingest files need an explicit action. Nothing is merged silently."
+        title="Inbox"
+      />
       <InboxList initialItems={rows.map(serializeNotification)} />
-    </div>
+    </AppChrome>
   );
 }
