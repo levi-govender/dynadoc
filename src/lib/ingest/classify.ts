@@ -63,6 +63,12 @@ export function heuristicClassify(args: {
     "employee",
     "employer",
   ]);
+  const contractor = hits(blob, [
+    "independent contractor",
+    "consultancy",
+    "contractor agreement",
+    "not an employee",
+  ]);
   const nda = hits(blob, [
     "non-disclosure",
     "nda",
@@ -86,6 +92,14 @@ export function heuristicClassify(args: {
       documentType: "nda",
       confidence: 0.82,
       rationale: "Non-disclosure / confidential information language.",
+    };
+  }
+  if (contractor >= 2) {
+    return {
+      category: "contract",
+      documentType: "contractor",
+      confidence: 0.8,
+      rationale: "Independent contractor / consultancy language.",
     };
   }
   if (employment >= 2) {
@@ -188,7 +202,7 @@ export function ingestClassifyPrompt(args: {
     content: [
       "Return JSON only with keys category, type, confidence, rationale.",
       `category must be one of: ${INGEST_CATEGORIES.join(", ")}.`,
-      "type is a short document-type label (employment, nda, invoice, lease, policy, unknown).",
+      "type is a short document-type label (employment, contractor, nda, invoice, lease, policy, unknown).",
       "confidence is 0 to 1. Do not treat invoices as in-family contracts.",
       `Declared job category: ${args.declaredCategory}.`,
       `Filename: ${args.filename}`,

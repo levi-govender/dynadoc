@@ -7,8 +7,13 @@ import {
   assertRole,
 } from "@/lib/auth/roles";
 import { IngestClassifyButton } from "@/components/ingest-classify-button";
+import { IngestClusterPanel } from "@/components/ingest-cluster-panel";
 import { getIngestJob, IngestJobNotFoundError } from "@/lib/ingest/jobs";
-import { INGEST_JOB_UPLOADED } from "@/lib/ingest/extract";
+import {
+  INGEST_JOB_CLASSIFIED,
+  INGEST_JOB_CLUSTERED,
+  INGEST_JOB_UPLOADED,
+} from "@/lib/ingest/extract";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
@@ -70,6 +75,14 @@ export default async function IngestJobPage({
       </p>
       {loaded.job.status === INGEST_JOB_UPLOADED ? (
         <IngestClassifyButton jobId={loaded.job.id} />
+      ) : null}
+      {loaded.job.status === INGEST_JOB_CLASSIFIED ||
+      loaded.job.status === INGEST_JOB_CLUSTERED ? (
+        <IngestClusterPanel
+          canCluster={loaded.gatesApplied}
+          clusterState={loaded.clusterState}
+          jobId={loaded.job.id}
+        />
       ) : null}
       <ul className="flex max-w-xl flex-col gap-2 text-sm">
         {loaded.files.map((file) => {
