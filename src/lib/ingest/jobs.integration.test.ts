@@ -6,8 +6,11 @@ import { config } from "dotenv";
 import test from "node:test";
 import { closeDb, getDb } from "@/lib/db";
 import { organizations } from "@/lib/db/schema";
-import { createIngestJob, getIngestJob } from "./jobs";
-import { INGEST_JOB_UPLOADED } from "./extract";
+import { createIngestJob, classifyIngestJob, getIngestJob } from "./jobs";
+import { INGEST_JOB_CLASSIFIED, INGEST_JOB_UPLOADED } from "./extract";
+import { ingestJobFiles } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { withOrganization } from "@/lib/db/tenant";
 
 config({ path: ".env.local" });
 config({ path: ".env" });
@@ -73,6 +76,33 @@ test("uploaded job lists files, category, and unsupported errors; stays uploaded
     assert.equal(loaded.job.status, INGEST_JOB_UPLOADED);
     assert.equal(loaded.category, "contract");
     assert.equal(loaded.files.map((file) => file.filename).join(","), "hello.docx,photo.png");
+
+    const invoiceFile = loaded.files[0];
+    assert.ok(invoiceFile);
+    await withOrganization(org.id, async (scoped) => {
+      await scoped
+        .update(ingestJobFiles)
+        .set({
+          extractedText:
+            "TAX INVOICE\nBill to: Acme\nAmount due: 1200\nVAT 15%\nPlease pay this invoice.",
+          error: null,
+        })
+        .where(eq(ingestJobFiles.id, invoiceFile.id));
+    });
+    const classified = await classifyIngestJob({
+      organizationId: org.id,
+      jobId: created.job.id,
+    });
+    assert.equal(classified.job.status, INGEST_JOB_CLASSIFIED);
+    const invoice = classified.files.find((file) => file.id === invoiceFile.id);
+    const labels = invoice?.classification as {
+      inFamily?: boolean;
+      holdout?: boolean;
+      documentType?: string;
+    } | null;
+    assert.equal(labels?.documentType, "invoice");
+    assert.equal(labels?.inFamily, false);
+    assert.equal(labels?.holdout, true);
   } catch (error) {
     if (error instanceof assert.AssertionError) {
       throw error;

@@ -71,6 +71,13 @@
       "when": 1788945235792,
       "tag": "0009_short_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788946164584,
+      "tag": "0010_shocking_the_liberteens",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "ingest_job_files" ADD COLUMN "classification" jsonb;

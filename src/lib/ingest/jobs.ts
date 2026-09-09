@@ -5,6 +5,7 @@ import { organizationEq, withOrganization } from "@/lib/db/tenant";
 import {
   extractIngestText,
   INGEST_FILE_MAX_BYTES,
+  INGEST_JOB_CLASSIFIED,
   INGEST_JOB_UPLOADED,
   INGEST_MAX_FILES,
   parseIngestCategory,
@@ -12,6 +13,11 @@ import {
   type IngestCategory,
   type IngestMode,
 } from "@/lib/ingest/extract";
+import {
+  classifyIngestFile,
+  classifyWithOpenAi,
+  type IngestClassification,
+} from "@/lib/ingest/classify";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
 export class IngestJobNotFoundError extends Error {
@@ -202,6 +208,54 @@ export async function getIngestJob(args: {
   });
 }
 
+export async function classifyIngestJob(args: {
+  organizationId: string;
+  jobId: string;
+}) {
+  const loaded = await getIngestJob(args);
+  if (!loaded.category) {
+    throw new IngestUploadError("Ingest job is missing a declared category");
+  }
+  const declaredCategory = loaded.category;
+  for (const file of loaded.files) {
+    if (file.error || !file.extractedText) {
+      continue;
+    }
+    const classification = await classifyIngestFile({
+      extractedText: file.extractedText,
+      filename: file.filename,
+      declaredCategory,
+      llm:
+        process.env.INGEST_LLM === "openai" && process.env.OPENAI_API_KEY
+          ? classifyWithOpenAi
+          : undefined,
+    });
+    await withOrganization(args.organizationId, async (db) => {
+      await db
+        .update(ingestJobFiles)
+        .set({ classification })
+        .where(
+          and(
+            eq(ingestJobFiles.id, file.id),
+            organizationEq(ingestJobFiles.organizationId, args.organizationId),
+          ),
+        );
+    });
+  }
+  await withOrganization(args.organizationId, async (db) => {
+    await db
+      .update(ingestJobs)
+      .set({ status: INGEST_JOB_CLASSIFIED })
+      .where(
+        and(
+          eq(ingestJobs.id, args.jobId),
+          organizationEq(ingestJobs.organizationId, args.organizationId),
+        ),
+      );
+  });
+  return getIngestJob(args);
+}
+
 export async function listIngestJobs(args: { organizationId: string }) {
   return withOrganization(args.organizationId, async (db) => {
     return db
@@ -219,6 +273,7 @@ export function serializeIngestJob(args: {
     filename: string;
     error: string | null;
     extractedText: string | null;
+    classification?: unknown;
   }>;
   category?: string;
   mode?: string;
@@ -234,6 +289,7 @@ export function serializeIngestJob(args: {
       filename: file.filename,
       error: file.error,
       extracted: Boolean(file.extractedText),
+      classification: (file.classification ?? null) as IngestClassification | null,
     })),
   };
 }
