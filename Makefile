@@ -1,5 +1,5 @@
 # Dynadoc developer commands. Add targets as tickets land (db, auth, pdf, ingest, …).
-# Ingest classify/gates/clusters/draft trees/review/rereview are covered by `make test`; no extra ingest Make target.
+# Ingest classify/gates/clusters/draft trees/review/rereview/style-theme are covered by `make test`; no extra ingest Make target.
 
 .PHONY: help install dev build start lint format check test health db-up db-down db-generate db-migrate db-studio db-smoke storage-smoke
 

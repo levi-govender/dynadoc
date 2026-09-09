@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/roles";
 import { IngestClassifyButton } from "@/components/ingest-classify-button";
 import { IngestClusterPanel } from "@/components/ingest-cluster-panel";
+import { IngestStyleThemePanel } from "@/components/ingest-style-theme-panel";
 import { getIngestJob, IngestJobNotFoundError } from "@/lib/ingest/jobs";
 import {
   INGEST_JOB_CLASSIFIED,
@@ -83,6 +84,12 @@ export default async function IngestJobPage({
           clusterState={loaded.clusterState}
           jobId={loaded.job.id}
           savedDrafts={loaded.savedDrafts}
+        />
+      ) : null}
+      {loaded.job.status === INGEST_JOB_CLUSTERED ? (
+        <IngestStyleThemePanel
+          drafts={loaded.savedDrafts?.types ?? []}
+          jobId={loaded.job.id}
         />
       ) : null}
       <ul className="flex max-w-xl flex-col gap-2 text-sm">
