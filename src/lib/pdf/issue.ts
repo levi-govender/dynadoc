@@ -28,9 +28,10 @@ export async function issueInstancePdf(args: {
   organizationId: string;
   documentTypeId: string;
   documentTypeSlug: string;
-  instanceId: string;
+  instanceId?: string;
   snapshot: DocumentTypeVersionSnapshot;
   resolved: ResolveResult;
+  draftWatermark?: boolean;
 }) {
   const logo = await resolvePdfLogo({
     organizationId: args.organizationId,
@@ -41,14 +42,25 @@ export async function issueInstancePdf(args: {
     document: args.resolved.document,
     logo,
     answers: args.resolved.answers,
+    draftWatermark: args.draftWatermark === true,
   });
-  const filename = issuedPdfFilename(args.documentTypeSlug, new Date());
+  const stampName = issuedPdfFilename(args.documentTypeSlug, new Date());
+  const filename = args.draftWatermark
+    ? stampName.replace(/\.pdf$/, "-DRAFT.pdf")
+    : stampName;
+  if (args.draftWatermark) {
+    return { bytes, filename, objectKey: null };
+  }
+  if (!args.instanceId) {
+    throw new Error("Issued PDF requires an instance id");
+  }
+  const instanceId = args.instanceId;
   let objectKey: string | null = null;
   try {
     const key = issuedPdfObjectKey({
       organizationId: args.organizationId,
       documentTypeId: args.documentTypeId,
-      instanceId: args.instanceId,
+      instanceId,
     });
     await putObject({
       key,
@@ -59,7 +71,7 @@ export async function issueInstancePdf(args: {
     objectKey = key;
     await attachIssuedPdfKey({
       organizationId: args.organizationId,
-      instanceId: args.instanceId,
+      instanceId,
       objectKey: key,
     });
   } catch {

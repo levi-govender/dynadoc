@@ -33,6 +33,16 @@ test("operator cannot edit drafts; author and org_admin can", () => {
   assert.equal(canEditDraft("org_admin"), true);
 });
 
+test("operator cannot generate from draft; authors can", () => {
+  assert.throws(
+    () => assertRole({ role: "operator" }, DRAFT_EDITOR_ROLES),
+    RoleForbiddenError,
+  );
+  assert.doesNotThrow(() =>
+    assertRole({ role: "author" }, DRAFT_EDITOR_ROLES),
+  );
+});
+
 test("operator can generate instances of published types", () => {
   assert.equal(canGenerateInstance("operator"), true);
   assert.doesNotThrow(() =>

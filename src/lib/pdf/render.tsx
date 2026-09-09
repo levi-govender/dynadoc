@@ -34,11 +34,14 @@ export type PdfLogo =
   | { kind: "png"; bytes: Buffer }
   | { kind: "none" };
 
+export const DRAFT_PDF_WATERMARK = "DRAFT";
+
 export async function renderDocumentPdf(args: {
   theme: StyleTheme;
   document: ResolvedDocument;
   logo: PdfLogo;
   answers?: Answers;
+  draftWatermark?: boolean;
 }): Promise<Buffer> {
   const { theme, document: resolved } = args;
   const signatures = resolveThemeSignatures(theme, args.answers ?? {});
@@ -55,7 +58,9 @@ export async function renderDocumentPdf(args: {
   let clause = 0;
 
   const pdfDoc = (
-    <Document>
+    <Document
+      subject={args.draftWatermark ? DRAFT_PDF_WATERMARK : undefined}
+    >
       <Page
         size={pageSize(theme)}
         style={{
@@ -68,6 +73,22 @@ export async function renderDocumentPdf(args: {
           lineHeight: 1.45,
         }}
       >
+        {args.draftWatermark ? (
+          <Text
+            fixed
+            style={{
+              position: "absolute",
+              top: 320,
+              left: 48,
+              opacity: 0.14,
+              fontSize: 72,
+              fontFamily: "Times-Bold",
+              transform: "rotate(-32deg)",
+            }}
+          >
+            {DRAFT_PDF_WATERMARK}
+          </Text>
+        ) : null}
         {logoSrc ? (
           // react-pdf Image has no alt prop
           // eslint-disable-next-line jsx-a11y/alt-text

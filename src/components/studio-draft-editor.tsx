@@ -33,6 +33,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  const [draftPdfPending, setDraftPdfPending] = useState(false);
   const skipFirst = useRef(true);
 
   useEffect(() => {
@@ -106,7 +107,11 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
         status={status}
       />
       {pane === "print" ? (
-        <StudioPrintPreview resolved={resolved} snapshot={snapshot} />
+        <StudioPrintPreview
+          draftWatermark
+          resolved={resolved}
+          snapshot={snapshot}
+        />
       ) : (
         <StudioBlockCanvas
           onChange={patchTemplate}
@@ -134,6 +139,62 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
             Print preview
           </Button>
         </div>
+        {pane === "print" ? (
+          <Button
+            className="mb-4"
+            disabled={draftPdfPending || Boolean(preview.error)}
+            onClick={() => {
+              setDraftPdfPending(true);
+              setError(null);
+              void fetch(`/api/document-types/${documentTypeId}/instances`, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({
+                  answers: preview.answers,
+                  fromDraft: true,
+                }),
+              }).then(async (response) => {
+                const body: unknown = await response.json().catch(() => null);
+                setDraftPdfPending(false);
+                if (!response.ok) {
+                  const message =
+                    body &&
+                    typeof body === "object" &&
+                    "error" in body &&
+                    typeof body.error === "string"
+                      ? body.error
+                      : "Could not generate draft PDF";
+                  setError(message);
+                  return;
+                }
+                if (
+                  body &&
+                  typeof body === "object" &&
+                  "pdfBase64" in body &&
+                  typeof body.pdfBase64 === "string" &&
+                  "filename" in body &&
+                  typeof body.filename === "string"
+                ) {
+                  const bytes = Uint8Array.from(atob(body.pdfBase64), (char) =>
+                    char.charCodeAt(0),
+                  );
+                  const url = URL.createObjectURL(
+                    new Blob([bytes], { type: "application/pdf" }),
+                  );
+                  const link = document.createElement("a");
+                  link.href = url;
+                  link.download = body.filename;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }
+              });
+            }}
+            size="sm"
+            type="button"
+          >
+            {draftPdfPending ? "Generating…" : "Download draft PDF"}
+          </Button>
+        ) : null}
         <SampleAnswersPanel
           answers={preview.answers}
           error={preview.error?.message ?? null}

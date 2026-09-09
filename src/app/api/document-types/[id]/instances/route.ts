@@ -1,8 +1,16 @@
 import { auth } from "@/lib/auth";
 import { toAuthzResponse } from "@/lib/auth/authz";
 import { requireUserMembership } from "@/lib/auth/organizations";
-import { INSTANCE_GENERATOR_ROLES, assertRole } from "@/lib/auth/roles";
-import { createInstanceFromPublished } from "@/lib/document-types/versions";
+import {
+  DRAFT_EDITOR_ROLES,
+  INSTANCE_GENERATOR_ROLES,
+  assertRole,
+} from "@/lib/auth/roles";
+import {
+  createInstanceFromPublished,
+  parseInstanceGenerateBody,
+  resolveDraftForGenerate,
+} from "@/lib/document-types/versions";
 import { issueInstancePdf } from "@/lib/pdf/issue";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -19,20 +27,36 @@ export async function POST(
   try {
     const { id } = await context.params;
     const membership = await requireUserMembership(session.user.id);
-    assertRole(membership, INSTANCE_GENERATOR_ROLES);
     let answers: unknown = {};
+    let fromDraft = false;
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
-      const body: unknown = await request.json();
-      if (
-        body &&
-        typeof body === "object" &&
-        "answers" in body &&
-        body.answers !== undefined
-      ) {
-        answers = body.answers;
-      }
+      const parsed = parseInstanceGenerateBody(await request.json());
+      answers = parsed.answers;
+      fromDraft = parsed.fromDraft;
     }
+    if (fromDraft) {
+      assertRole(membership, DRAFT_EDITOR_ROLES);
+      const { type, snapshot, resolved } = await resolveDraftForGenerate({
+        organizationId: membership.organizationId,
+        documentTypeId: id,
+        answers,
+      });
+      const issued = await issueInstancePdf({
+        organizationId: membership.organizationId,
+        documentTypeId: id,
+        documentTypeSlug: type.slug,
+        snapshot,
+        resolved,
+        draftWatermark: true,
+      });
+      return NextResponse.json({
+        draft: true,
+        filename: issued.filename,
+        pdfBase64: issued.bytes.toString("base64"),
+      });
+    }
+    assertRole(membership, INSTANCE_GENERATOR_ROLES);
     const { instance, snapshot, version, type, resolved } =
       await createInstanceFromPublished({
         organizationId: membership.organizationId,
