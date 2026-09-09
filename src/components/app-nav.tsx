@@ -54,7 +54,7 @@ export function AppNav({
     });
     links.push({
       href: "/history",
-      label: "History",
+      label: "Issued",
       match: (path) => path.startsWith("/history"),
     });
   }

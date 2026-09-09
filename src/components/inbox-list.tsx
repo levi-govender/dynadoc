@@ -79,10 +79,10 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
 
   function typeLabel(type: string) {
     if (type === "ingest_holdout") {
-      return "Ingest holdout";
+      return "Needs a look";
     }
     if (type === "ingest_rereview") {
-      return "Ingest re-review";
+      return "Checked again";
     }
     return "Notice";
   }
@@ -94,7 +94,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
         <div className="rounded-md border border-dashed px-6 py-12 text-center">
           <p className="font-medium">Inbox is clear</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Holdout ingest files and re-review notices will show up here.
+            Files that need a look after ingest will show up here.
           </p>
         </div>
       ) : (

@@ -1,5 +1,6 @@
 "use client";
 
+import { AnswerFieldInput } from "@/components/answer-field-input";
 import { Button } from "@/components/ui/button";
 import type { Answers } from "@/lib/expr/evaluate";
 import { REPEATABLE_MAX_ROWS } from "@/lib/document-types/repeatable";
@@ -17,6 +18,7 @@ type Props = {
   answers: Answers;
   onChange: (next: Answers) => void;
   error: string | null;
+  imageFieldIds?: Set<string>;
 };
 
 export function SampleAnswersPanel({
@@ -24,6 +26,7 @@ export function SampleAnswersPanel({
   answers,
   onChange,
   error,
+  imageFieldIds,
 }: Props) {
   function setField(fieldId: string, value: unknown) {
     const next = { ...answers };
@@ -89,12 +92,19 @@ export function SampleAnswersPanel({
                 ? (answers[group.id] as Array<Record<string, unknown>>)
                 : []
               ).map((row, index) => (
-                <div className="flex flex-col gap-2 rounded-md border p-2" key={index}>
+                <div
+                  className="flex flex-col gap-2 rounded-md border p-2"
+                  key={index}
+                >
                   {group.fields.map((field) => (
-                    <label className="flex flex-col gap-1 text-sm" key={field.id}>
+                    <label
+                      className="flex flex-col gap-1 text-sm"
+                      key={field.id}
+                    >
                       <span>{field.label}</span>
-                      <SampleInput
+                      <AnswerFieldInput
                         field={field}
+                        image={imageFieldIds?.has(field.id)}
                         onChange={(value) =>
                           setRowField(group.id, index, field.id, value)
                         }
@@ -131,10 +141,14 @@ export function SampleAnswersPanel({
               <label className="flex flex-col gap-1 text-sm" key={field.id}>
                 <span>
                   {field.label}
-                  <span className="text-muted-foreground"> ({group.title})</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    ({group.title})
+                  </span>
                 </span>
-                <SampleInput
+                <AnswerFieldInput
                   field={field}
+                  image={imageFieldIds?.has(field.id)}
                   onChange={(value) => setField(field.id, value)}
                   value={answers[field.id]}
                 />
@@ -144,69 +158,5 @@ export function SampleAnswersPanel({
         </fieldset>
       ))}
     </section>
-  );
-}
-
-function SampleInput({
-  field,
-  value,
-  onChange,
-}: {
-  field: Field;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  const text = value == null ? "" : String(value);
-  if (field.type === "select") {
-    return (
-      <select
-        className="h-8 rounded-md border bg-background px-2"
-        onChange={(event) => onChange(event.target.value || undefined)}
-        value={text}
-      >
-        <option value="">Choose…</option>
-        {field.options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-  if (field.type === "boolean") {
-    return (
-      <input
-        checked={value === true}
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
-    );
-  }
-  if (field.type === "textarea") {
-    return (
-      <textarea
-        className="min-h-16 rounded-md border bg-background px-2 py-1"
-        onChange={(event) => onChange(event.target.value)}
-        value={text}
-      />
-    );
-  }
-  const inputType =
-    field.type === "number" ? "number" : field.type === "date" ? "date" : "text";
-  return (
-    <input
-      className="h-8 rounded-md border bg-background px-2"
-      onChange={(event) =>
-        onChange(
-          field.type === "number"
-            ? event.target.value === ""
-              ? undefined
-              : Number(event.target.value)
-            : event.target.value,
-        )
-      }
-      type={inputType}
-      value={text}
-    />
   );
 }

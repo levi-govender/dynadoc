@@ -76,25 +76,16 @@ export default async function StudioDraftPage({
         </Link>
         <h1 className="text-base font-semibold">{type.name}</h1>
         <p className="text-xs text-muted-foreground">
-          {type.slug} · {type.status}
+          {type.status === "published" ? "Published" : "Draft"}
         </p>
-        <a
-          className="ml-auto text-sm font-medium text-primary hover:underline"
-          href={`/api/document-types/${type.id}/export?source=draft`}
-        >
-          Export draft JSON
-        </a>
-        {type.publishedVersionId ? (
-          <a
-            className="text-sm font-medium text-primary hover:underline"
-            href={`/api/document-types/${type.id}/export?source=published`}
-          >
-            Export published JSON
-          </a>
-        ) : null}
         <StudioLogoUpload documentTypeId={type.id} />
       </header>
-      <StudioDraftEditor documentTypeId={type.id} initialSnapshot={snapshot} />
+      <StudioDraftEditor
+        documentTypeId={type.id}
+        initialSnapshot={snapshot}
+        publishedVersionId={type.publishedVersionId ?? null}
+        typeStatus={type.status}
+      />
     </AppChrome>
   );
 }

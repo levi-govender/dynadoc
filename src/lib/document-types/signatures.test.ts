@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import fixture from "@/types/fixtures/employment-contract.json";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
-import { resolveThemeSignatures } from "./signatures";
+import { resolveThemeSignatures, signatureImageFieldIds } from "./signatures";
 
 const snapshot = parseDocumentTypeVersionSnapshot(fixture);
 const pngData =
@@ -26,4 +26,10 @@ test("signature image from answers is passed through", () => {
   });
   assert.equal(slots[0]?.imageSrc, pngData);
   assert.equal(slots[1]?.imageSrc, null);
+});
+
+test("theme lists fields used as signature images", () => {
+  assert.ok(
+    signatureImageFieldIds(snapshot.styleTheme).has("employeeSignatureImage"),
+  );
 });

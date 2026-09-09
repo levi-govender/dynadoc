@@ -6,8 +6,10 @@ import {
   INSTANCE_GENERATOR_ROLES,
   RoleForbiddenError,
   assertRole,
+  canEditDraft,
 } from "@/lib/auth/roles";
 import { listPublishedDocumentTypes } from "@/lib/document-types/create";
+import { Button } from "@/components/ui/button";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -38,13 +40,24 @@ export default async function FillIndexPage() {
   return (
     <AppChrome email={session.user.email} role={membership.role}>
       <PageHeader
-        description="Only published versions appear here. Each generate creates a new instance."
+        description="Choose a published type. Each generate creates a new issued file."
         title="Fill"
       />
       {types.length === 0 ? (
         <EmptyState
-          description="Ask an author to publish a document type, then return here to generate."
-          title="Nothing published yet"
+          action={
+            canEditDraft(membership.role) ? (
+              <Link href="/studio">
+                <Button type="button">Open Studio to publish a type</Button>
+              </Link>
+            ) : undefined
+          }
+          description={
+            canEditDraft(membership.role)
+              ? "Publish a document type in Studio, then come back to fill it."
+              : "Ask an author to publish a document type, then return here."
+          }
+          title="Nothing ready to fill"
         />
       ) : (
         <ul className="grid gap-2">

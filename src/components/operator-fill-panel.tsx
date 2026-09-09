@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AnswerFieldInput } from "@/components/answer-field-input";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { StudioPrintPreview } from "@/components/studio-print-preview";
 import { samplePreview } from "@/lib/document-types/branching";
 import { studioResolve } from "@/lib/document-types/structure-preview";
 import { collectOperatorIssues } from "@/lib/document-types/answers-schema";
+import {
+  clearFillDraft,
+  readFillDraft,
+  writeFillDraft,
+} from "@/lib/document-types/fill-draft";
 import { REPEATABLE_MAX_ROWS } from "@/lib/document-types/repeatable";
+import { signatureImageFieldIds } from "@/lib/document-types/signatures";
 import type { Answers } from "@/lib/expr/evaluate";
 import type { DocumentTypeVersionSnapshot, Field } from "@/types/document-type";
 
@@ -17,9 +23,18 @@ type Props = {
 };
 
 export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(
+    () => readFillDraft(documentTypeId)?.answers ?? {},
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [step, setStep] = useState(
+    () => readFillDraft(documentTypeId)?.step ?? 0,
+  );
+  const imageFields = useMemo(
+    () => signatureImageFieldIds(snapshot.styleTheme),
+    [snapshot.styleTheme],
+  );
 
   const preview = useMemo(
     () => samplePreview(snapshot.formSchema, answers),
@@ -40,6 +55,7 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
     }
   }
   const canGenerate = issues.length === 0 && !preview.error;
+  const blocker = issues[0]?.message ?? preview.error?.message ?? null;
 
   const groups = useMemo(() => {
     const byGroup = new Map<
@@ -61,6 +77,14 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
     }
     return [...byGroup.values()];
   }, [preview.fields]);
+  const reviewIndex = groups.length;
+  const safeStep = Math.min(step, reviewIndex);
+  const isReview = safeStep >= reviewIndex;
+  const currentGroup = groups[safeStep];
+
+  useEffect(() => {
+    writeFillDraft(documentTypeId, { answers, step: safeStep });
+  }, [answers, documentTypeId, safeStep]);
 
   function setRowField(
     groupId: string,
@@ -169,32 +193,38 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                 link.href = word;
                 link.click();
               }
+              clearFillDraft(documentTypeId);
               window.location.href = body.pdfDownload;
             }
           });
         }}
       >
-        <h2 className="mb-1 text-sm font-medium">Answers</h2>
+        <h2 className="mb-1 text-sm font-medium">
+          {isReview ? "Review" : currentGroup ? currentGroup.title : "Answers"}
+        </h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Required fields must be filled before you can generate.
+          {groups.length === 0
+            ? "Nothing to fill on this type."
+            : `Step ${safeStep + 1} of ${reviewIndex + 1}`}
         </p>
         {preview.error ? (
           <p className="text-sm text-destructive">{preview.error.message}</p>
         ) : null}
-        {groups.map((group) => (
-          <fieldset className="mb-6 flex flex-col gap-3" key={group.id}>
-            <legend className="text-sm font-medium">{group.title}</legend>
-            {group.repeatable ? (
+        {!isReview && currentGroup ? (
+          <fieldset className="mb-6 flex flex-col gap-3">
+            {currentGroup.repeatable ? (
               <>
-                {(Array.isArray(stripped[group.id])
-                  ? (stripped[group.id] as Array<Record<string, unknown>>)
+                {(Array.isArray(stripped[currentGroup.id])
+                  ? (stripped[currentGroup.id] as Array<
+                      Record<string, unknown>
+                    >)
                   : []
                 ).map((row, index) => (
                   <div
                     className="flex flex-col gap-3 rounded-md border p-3"
                     key={index}
                   >
-                    {group.fields.map((field) => (
+                    {currentGroup.fields.map((field) => (
                       <label
                         className="flex flex-col gap-1 text-sm"
                         key={field.id}
@@ -208,10 +238,11 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                             </span>
                           ) : null}
                         </span>
-                        <FieldInput
+                        <AnswerFieldInput
                           field={field}
+                          image={imageFields.has(field.id)}
                           onChange={(value) =>
-                            setRowField(group.id, index, field.id, value)
+                            setRowField(currentGroup.id, index, field.id, value)
                           }
                           value={row[field.id]}
                         />
@@ -223,29 +254,29 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                       </label>
                     ))}
                     <Button
-                      onClick={() => removeRow(group.id, index)}
+                      onClick={() => removeRow(currentGroup.id, index)}
                       type="button"
                       variant="outline"
                     >
-                      Remove row
+                      Remove
                     </Button>
                   </div>
                 ))}
                 <Button
                   disabled={
-                    (Array.isArray(stripped[group.id])
-                      ? stripped[group.id].length
+                    (Array.isArray(stripped[currentGroup.id])
+                      ? stripped[currentGroup.id].length
                       : 0) >= REPEATABLE_MAX_ROWS
                   }
-                  onClick={() => addRow(group.id)}
+                  onClick={() => addRow(currentGroup.id)}
                   type="button"
                   variant="secondary"
                 >
-                  Add row
+                  Add {currentGroup.title.toLowerCase()}
                 </Button>
               </>
             ) : (
-              group.fields.map((field) => (
+              currentGroup.fields.map((field) => (
                 <label className="flex flex-col gap-1 text-sm" key={field.id}>
                   <span>
                     {field.label}
@@ -253,8 +284,9 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                       <span className="text-muted-foreground"> (required)</span>
                     ) : null}
                   </span>
-                  <FieldInput
+                  <AnswerFieldInput
                     field={field}
+                    image={imageFields.has(field.id)}
                     onChange={(value) => setField(field.id, value)}
                     value={stripped[field.id]}
                   />
@@ -267,89 +299,64 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
               ))
             )}
           </fieldset>
-        ))}
+        ) : null}
+        {isReview ? (
+          <ul className="mb-6 flex flex-col gap-2 text-sm">
+            {groups.map((group) => (
+              <li key={group.id}>
+                <button
+                  className="text-left font-medium text-primary hover:underline"
+                  onClick={() => setStep(groups.indexOf(group))}
+                  type="button"
+                >
+                  {group.title}
+                </button>
+                <p className="text-muted-foreground">
+                  {group.repeatable
+                    ? `${Array.isArray(stripped[group.id]) ? stripped[group.id].length : 0} row(s)`
+                    : group.fields.map((field) => field.label).join(", ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {formIssues.map((message) => (
           <p className="text-sm text-destructive" key={message}>
             {message}
           </p>
         ))}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {!canGenerate && blocker ? (
+          <p className="text-sm text-destructive">Generate is off: {blocker}</p>
+        ) : null}
         <p className="text-xs text-muted-foreground">
-          Generate always inserts a new instance. It does not rewrite a PDF you
-          already issued.
+          Generate creates a new issued file. It never overwrites one you
+          already made.
         </p>
-        <Button disabled={pending || !canGenerate} type="submit">
-          Generate document
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            disabled={safeStep === 0}
+            onClick={() => setStep(Math.max(0, safeStep - 1))}
+            type="button"
+            variant="outline"
+          >
+            Back
+          </Button>
+          {isReview ? (
+            <Button disabled={pending || !canGenerate} type="submit">
+              Generate document
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setStep(Math.min(reviewIndex, safeStep + 1))}
+              type="button"
+            >
+              Next
+            </Button>
+          )}
+        </div>
       </form>
       <StudioPrintPreview resolved={resolved} snapshot={snapshot} />
     </div>
-  );
-}
-
-function FieldInput({
-  field,
-  value,
-  onChange,
-}: {
-  field: Field;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  const text = value == null ? "" : String(value);
-  if (field.type === "select") {
-    return (
-      <select
-        className="h-8 rounded-md border bg-background px-2"
-        onChange={(event) => onChange(event.target.value || undefined)}
-        value={text}
-      >
-        <option value="">Choose…</option>
-        {field.options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-  if (field.type === "boolean") {
-    return (
-      <input
-        checked={value === true}
-        onChange={(event) => onChange(event.target.checked)}
-        type="checkbox"
-      />
-    );
-  }
-  if (field.type === "textarea") {
-    return (
-      <textarea
-        className="min-h-16 rounded-md border bg-background px-2 py-1"
-        onChange={(event) => onChange(event.target.value)}
-        value={text}
-      />
-    );
-  }
-  return (
-    <Input
-      onChange={(event) =>
-        onChange(
-          field.type === "number"
-            ? event.target.value === ""
-              ? undefined
-              : Number(event.target.value)
-            : event.target.value,
-        )
-      }
-      type={
-        field.type === "number"
-          ? "number"
-          : field.type === "date"
-            ? "date"
-            : "text"
-      }
-      value={text}
-    />
   );
 }

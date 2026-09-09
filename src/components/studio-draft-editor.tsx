@@ -12,6 +12,9 @@ import {
   samplePreview,
 } from "@/lib/document-types/branching";
 import { studioResolve } from "@/lib/document-types/structure-preview";
+import { StudioPublishButton } from "@/components/studio-publish-button";
+import { snapshotUsesAdvancedRules } from "@/lib/document-types/studio-mode";
+import { signatureImageFieldIds } from "@/lib/document-types/signatures";
 import type { Answers } from "@/lib/expr/evaluate";
 import type {
   DocumentTypeVersionSnapshot,
@@ -22,10 +25,20 @@ import type {
 type Props = {
   documentTypeId: string;
   initialSnapshot: DocumentTypeVersionSnapshot;
+  typeStatus: string;
+  publishedVersionId: string | null;
 };
 
-export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
+export function StudioDraftEditor({
+  documentTypeId,
+  initialSnapshot,
+  typeStatus,
+  publishedVersionId,
+}: Props) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [simple, setSimple] = useState(
+    () => !snapshotUsesAdvancedRules(initialSnapshot),
+  );
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [sampleAnswers, setSampleAnswers] = useState<Answers>({});
   const [pane, setPane] = useState<"structure" | "print">("structure");
@@ -35,6 +48,25 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [draftPdfPending, setDraftPdfPending] = useState(false);
   const skipFirst = useRef(true);
+  const undoStack = useRef<DocumentTypeVersionSnapshot[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  function pushUndo(previous: DocumentTypeVersionSnapshot) {
+    undoStack.current.push(structuredClone(previous));
+    if (undoStack.current.length > 40) {
+      undoStack.current.shift();
+    }
+    setCanUndo(true);
+  }
+
+  function undo() {
+    const previous = undoStack.current.pop();
+    if (!previous) {
+      return;
+    }
+    setCanUndo(undoStack.current.length > 0);
+    setSnapshot(previous);
+  }
 
   useEffect(() => {
     if (skipFirst.current) {
@@ -72,6 +104,35 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
     return () => window.clearTimeout(handle);
   }, [documentTypeId, snapshot]);
 
+  const undoFn = useRef(undo);
+  undoFn.current = undo;
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "z"
+      ) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      if (!undoStack.current.length) {
+        return;
+      }
+      event.preventDefault();
+      undoFn.current();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const form = snapshot.formSchema;
   const overlapWarnings = overlappingActivationWarnings(form);
   const preview = samplePreview(form, sampleAnswers);
@@ -79,6 +140,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
 
   function patchForm(next: FormSchema | ((current: FormSchema) => FormSchema)) {
     const formSchema = typeof next === "function" ? next(form) : next;
+    pushUndo(snapshot);
     setSnapshot((current) => ({ ...current, formSchema }));
     setSampleAnswers((previous) => {
       const stripped = samplePreview(formSchema, previous).answers;
@@ -89,6 +151,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
   }
 
   function patchTemplate(next: (current: Template) => Template) {
+    pushUndo(snapshot);
     setSnapshot((current) => ({
       ...current,
       template: next(current.template),
@@ -104,6 +167,9 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
         overlapWarnings={overlapWarnings}
         patchForm={patchForm}
         selectedFieldId={selectedFieldId}
+        simple={simple}
+        onUndo={undo}
+        canUndo={canUndo}
         status={status}
       />
       {pane === "print" ? (
@@ -117,18 +183,35 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
           onChange={patchTemplate}
           resolved={resolved}
           selectedFieldId={selectedFieldId}
+          simple={simple}
           snapshot={snapshot}
         />
       )}
       <div className="min-h-0 overflow-y-auto border-t bg-background p-4 xl:border-t-0 xl:border-l">
-        <div className="mb-4 flex gap-1">
+        <div className="mb-4 flex flex-wrap items-center gap-1">
+          <Button
+            onClick={() => setSimple(true)}
+            size="xs"
+            type="button"
+            variant={simple ? "secondary" : "outline"}
+          >
+            Simple
+          </Button>
+          <Button
+            onClick={() => setSimple(false)}
+            size="xs"
+            type="button"
+            variant={simple ? "outline" : "secondary"}
+          >
+            Advanced
+          </Button>
           <Button
             onClick={() => setPane("structure")}
             size="xs"
             type="button"
             variant={pane === "structure" ? "secondary" : "outline"}
           >
-            Structure
+            {simple ? "Outline" : "Structure"}
           </Button>
           <Button
             onClick={() => setPane("print")}
@@ -139,6 +222,32 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
             Print preview
           </Button>
         </div>
+        <div className="mb-4">
+          <StudioPublishButton documentTypeId={documentTypeId} />
+          <p className="mt-1 text-xs text-muted-foreground">
+            {typeStatus === "published"
+              ? "Operators can fill the last published version."
+              : "Publish when this type is ready to fill."}
+          </p>
+        </div>
+        {simple ? null : (
+          <div className="mb-4 flex flex-wrap gap-3 text-sm">
+            <a
+              className="font-medium text-primary hover:underline"
+              href={`/api/document-types/${documentTypeId}/export?source=draft`}
+            >
+              Export draft JSON
+            </a>
+            {publishedVersionId ? (
+              <a
+                className="font-medium text-primary hover:underline"
+                href={`/api/document-types/${documentTypeId}/export?source=published`}
+              >
+                Export published JSON
+              </a>
+            ) : null}
+          </div>
+        )}
         {pane === "print" ? (
           <Button
             className="mb-4"
@@ -198,6 +307,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
         <SampleAnswersPanel
           answers={preview.answers}
           error={preview.error?.message ?? null}
+          imageFieldIds={signatureImageFieldIds(snapshot.styleTheme)}
           groups={(() => {
             const byGroup = new Map<
               string,
@@ -205,7 +315,7 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
                 id: string;
                 title: string;
                 repeatable?: boolean;
-                fields: typeof preview.fields[number]["field"][];
+                fields: (typeof preview.fields)[number]["field"][];
               }
             >();
             for (const entry of preview.fields) {

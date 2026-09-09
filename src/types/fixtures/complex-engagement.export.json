@@ -1,0 +1,371 @@
+{
+  "name": "Complex engagement",
+  "slug": "complex-engagement",
+  "source": "draft",
+  "snapshot": {
+    "schemaVersion": 1,
+    "expressionDialectVersion": 1,
+    "formSchema": {
+      "schemaVersion": 1,
+      "groups": [
+        {
+          "id": "parties",
+          "title": "Parties",
+          "fields": [
+            {
+              "id": "employeeName",
+              "type": "text",
+              "label": "Worker name",
+              "required": true
+            },
+            {
+              "id": "employerName",
+              "type": "text",
+              "label": "Company name",
+              "required": true
+            },
+            {
+              "id": "startDate",
+              "type": "date",
+              "label": "Start date",
+              "required": true
+            },
+            {
+              "id": "engagementKind",
+              "type": "select",
+              "label": "Engagement",
+              "required": true,
+              "options": [
+                {
+                  "value": "employment",
+                  "label": "Employment",
+                  "activatesGroupIds": ["employmentDetails"]
+                },
+                {
+                  "value": "contractor",
+                  "label": "Independent contractor",
+                  "activatesGroupIds": ["contractorTerms"]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "employmentDetails",
+          "title": "Employment",
+          "visibleWhen": {
+            "op": "eq",
+            "field": "engagementKind",
+            "value": "employment"
+          },
+          "fields": [
+            {
+              "id": "employmentType",
+              "type": "select",
+              "label": "Employment type",
+              "required": true,
+              "options": [
+                {
+                  "value": "permanent",
+                  "label": "Permanent",
+                  "activatesGroupIds": ["permanentTerms"]
+                },
+                {
+                  "value": "fixed-term",
+                  "label": "Fixed-term",
+                  "activatesGroupIds": ["fixedTerm"]
+                }
+              ]
+            },
+            {
+              "id": "jobTitle",
+              "type": "select",
+              "label": "Job title",
+              "required": true,
+              "options": [
+                { "value": "Engineer", "label": "Engineer" },
+                { "value": "Manager", "label": "Manager" }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "permanentTerms",
+          "title": "Permanent terms",
+          "visibleWhen": {
+            "op": "eq",
+            "field": "employmentType",
+            "value": "permanent"
+          },
+          "fields": [
+            {
+              "id": "noticeWeeks",
+              "type": "number",
+              "label": "Notice period (weeks)",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "fixedTerm",
+          "title": "Fixed-term",
+          "visibleWhen": {
+            "op": "eq",
+            "field": "employmentType",
+            "value": "fixed-term"
+          },
+          "fields": [
+            {
+              "id": "endDate",
+              "type": "date",
+              "label": "End date",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "contractorTerms",
+          "title": "Contractor terms",
+          "visibleWhen": {
+            "op": "eq",
+            "field": "engagementKind",
+            "value": "contractor"
+          },
+          "fields": [
+            {
+              "id": "companyName",
+              "type": "text",
+              "label": "Contractor entity",
+              "required": true
+            },
+            {
+              "id": "dayRate",
+              "type": "number",
+              "label": "Day rate",
+              "required": true
+            }
+          ]
+        },
+        {
+          "id": "schedule",
+          "title": "Deliverables",
+          "repeatable": true,
+          "fields": [
+            {
+              "id": "description",
+              "type": "text",
+              "label": "Deliverable",
+              "required": true
+            },
+            {
+              "id": "hours",
+              "type": "number",
+              "label": "Hours"
+            }
+          ]
+        }
+      ],
+      "validations": [
+        {
+          "id": "endAfterStart",
+          "op": "gt",
+          "left": "endDate",
+          "right": "startDate",
+          "message": "End date must be after start date"
+        }
+      ]
+    },
+    "template": {
+      "schemaVersion": 1,
+      "blocks": [
+        {
+          "id": "title",
+          "type": "heading",
+          "children": [{ "type": "text", "text": "Engagement agreement" }]
+        },
+        {
+          "id": "parties",
+          "type": "paragraph",
+          "children": [
+            { "type": "text", "text": "This agreement is between " },
+            { "type": "bind", "field": "employerName" },
+            { "type": "text", "text": " and " },
+            { "type": "bind", "field": "employeeName" },
+            { "type": "text", "text": "." }
+          ]
+        },
+        {
+          "id": "role",
+          "type": "paragraph",
+          "includeWhen": {
+            "op": "eq",
+            "field": "engagementKind",
+            "value": "employment"
+          },
+          "children": [
+            {
+              "type": "variantMap",
+              "field": "jobTitle",
+              "variants": {
+                "Engineer": "The employee is engaged as an engineer from {{startDate}}.",
+                "Manager": "The employee is engaged as a manager from {{startDate}}."
+              }
+            }
+          ]
+        },
+        {
+          "id": "duties",
+          "type": "list",
+          "includeWhen": {
+            "op": "eq",
+            "field": "engagementKind",
+            "value": "employment"
+          },
+          "children": [
+            {
+              "type": "text",
+              "text": "Perform the duties of the role, follow lawful instructions, and keep confidential information secret."
+            }
+          ]
+        },
+        {
+          "id": "notice",
+          "type": "paragraph",
+          "includeWhen": {
+            "op": "and",
+            "exprs": [
+              {
+                "op": "eq",
+                "field": "engagementKind",
+                "value": "employment"
+              },
+              {
+                "op": "eq",
+                "field": "employmentType",
+                "value": "permanent"
+              }
+            ]
+          },
+          "children": [
+            { "type": "text", "text": "Either party may terminate on " },
+            { "type": "bind", "field": "noticeWeeks" },
+            { "type": "text", "text": " weeks' written notice." }
+          ]
+        },
+        {
+          "id": "term-end",
+          "type": "paragraph",
+          "includeWhen": {
+            "op": "eq",
+            "field": "employmentType",
+            "value": "fixed-term"
+          },
+          "children": [
+            { "type": "text", "text": "This employment ends on " },
+            { "type": "bind", "field": "endDate" },
+            { "type": "text", "text": " unless ended earlier by written agreement." }
+          ]
+        },
+        {
+          "id": "contractor-status",
+          "type": "paragraph",
+          "includeWhen": {
+            "op": "eq",
+            "field": "engagementKind",
+            "value": "contractor"
+          },
+          "children": [
+            { "type": "text", "text": "Services are supplied by " },
+            { "type": "bind", "field": "companyName" },
+            { "type": "text", "text": " as an independent contractor at a day rate of " },
+            { "type": "bind", "field": "dayRate" },
+            { "type": "text", "text": ", starting " },
+            { "type": "bind", "field": "startDate" },
+            { "type": "text", "text": "." }
+          ]
+        },
+        {
+          "id": "contractor-nda",
+          "type": "paragraph",
+          "includeWhen": {
+            "op": "and",
+            "exprs": [
+              {
+                "op": "eq",
+                "field": "engagementKind",
+                "value": "contractor"
+              },
+              { "op": "exists", "field": "companyName" }
+            ]
+          },
+          "children": [
+            {
+              "type": "text",
+              "text": "The contractor entity shall not disclose confidential information of the company except as required by law."
+            }
+          ]
+        },
+        {
+          "id": "schedule-heading",
+          "type": "heading",
+          "children": [{ "type": "text", "text": "Schedule of deliverables" }]
+        },
+        {
+          "id": "schedule-table",
+          "type": "table",
+          "children": [
+            { "type": "bind", "field": "schedule[].description" },
+            { "type": "text", "text": " — " },
+            { "type": "bind", "field": "schedule[].hours" },
+            { "type": "text", "text": " hours" }
+          ]
+        },
+        { "id": "break", "type": "pageBreak" },
+        {
+          "id": "governing",
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "text": "This agreement is the entire agreement between the parties and may be signed in counterparts."
+            }
+          ]
+        },
+        { "id": "sign", "type": "signature" },
+        { "id": "initial", "type": "initials" }
+      ]
+    },
+    "styleTheme": {
+      "schemaVersion": 1,
+      "page": {
+        "size": "A4",
+        "margins": { "top": 72, "right": 54, "bottom": 72, "left": 54 }
+      },
+      "typography": {
+        "body": { "family": "Times New Roman", "size": 11 },
+        "heading": { "family": "Times New Roman", "size": 16, "weight": 700 }
+      },
+      "letterhead": { "footerMode": "pageNumbers" },
+      "signatures": {
+        "blocks": [
+          {
+            "id": "worker",
+            "kind": "signature",
+            "partyLabel": "Worker",
+            "includeTitle": true,
+            "includeDate": true,
+            "partyNameField": "employeeName"
+          },
+          {
+            "id": "company",
+            "kind": "signature",
+            "partyLabel": "Company",
+            "includeTitle": true,
+            "includeDate": true,
+            "partyNameField": "employerName"
+          }
+        ]
+      }
+    }
+  }
+}

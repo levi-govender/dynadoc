@@ -19,7 +19,10 @@ import {
   updateTextInline,
   type BlockType,
 } from "@/lib/document-types/template";
-import { resolvedBlockText, type StudioResolve } from "@/lib/document-types/structure-preview";
+import {
+  resolvedBlockText,
+  type StudioResolve,
+} from "@/lib/document-types/structure-preview";
 import { cn } from "@/lib/utils";
 import type {
   Block,
@@ -44,6 +47,7 @@ type Props = {
   resolved: StudioResolve;
   selectedFieldId: string | null;
   onChange: (next: (current: Template) => Template) => void;
+  simple?: boolean;
 };
 
 export function StudioBlockCanvas({
@@ -51,12 +55,11 @@ export function StudioBlockCanvas({
   resolved,
   selectedFieldId,
   onChange,
+  simple = false,
 }: Props) {
   const template = snapshot.template;
   const includedIds = new Set(
-    resolved.ok
-      ? resolved.result.document.blocks.map((block) => block.id)
-      : [],
+    resolved.ok ? resolved.result.document.blocks.map((block) => block.id) : [],
   );
   const resolvedText = new Map(
     resolved.ok
@@ -72,8 +75,9 @@ export function StudioBlockCanvas({
       <div className="flex flex-wrap items-center gap-2 border-b bg-background px-4 py-3">
         <h2 className="text-sm font-medium">Document</h2>
         <p className="text-xs text-muted-foreground">
-          Sample answers interpolate wording. Include-when drops clauses from
-          the preview.
+          {simple
+            ? "Write the document. Insert an answer to fill a blank."
+            : "Sample answers interpolate wording. Include-when drops clauses from the preview."}
         </p>
         <div className="ml-auto flex flex-wrap gap-1">
           {BLOCK_TYPES.map((type) => (
@@ -102,6 +106,7 @@ export function StudioBlockCanvas({
                 block={block}
                 canMoveDown={index < template.blocks.length - 1}
                 canMoveUp={index > 0}
+                simple={simple}
                 form={snapshot.formSchema}
                 highlighted={
                   selectedFieldId != null &&
@@ -129,6 +134,7 @@ function BlockRow({
   canMoveUp,
   canMoveDown,
   onChange,
+  simple,
 }: {
   block: Block;
   form: FormSchema;
@@ -138,6 +144,7 @@ function BlockRow({
   canMoveUp: boolean;
   canMoveDown: boolean;
   onChange: (next: (current: Template) => Template) => void;
+  simple: boolean;
 }) {
   const editable =
     block.type === "heading" ||
@@ -171,9 +178,7 @@ function BlockRow({
         </Button>
         <Button
           disabled={!canMoveDown}
-          onClick={() =>
-            onChange((current) => moveBlock(current, block.id, 1))
-          }
+          onClick={() => onChange((current) => moveBlock(current, block.id, 1))}
           size="xs"
           type="button"
           variant="ghost"
@@ -201,7 +206,7 @@ function BlockRow({
               }
             }}
           >
-            <option value="">Insert {"{{field}}"}</option>
+            <option value="">Insert answer</option>
             {fields.map((field) => (
               <option key={field.id} value={field.id}>
                 {field.label}
@@ -209,7 +214,7 @@ function BlockRow({
             ))}
           </select>
         ) : null}
-        {editable && selectFields.length > 0 ? (
+        {editable && !simple && selectFields.length > 0 ? (
           <select
             aria-label="Insert variant map"
             className="h-6 rounded border bg-background px-1 text-xs"
@@ -239,16 +244,16 @@ function BlockRow({
           </select>
         ) : null}
       </div>
-      <VisibleWhenEditor
-        form={form}
-        label="Include when"
-        onChange={(expr) =>
-          onChange((current) =>
-            setBlockIncludeWhen(current, block.id, expr),
-          )
-        }
-        value={block.includeWhen}
-      />
+      {simple ? null : (
+        <VisibleWhenEditor
+          form={form}
+          label="Include when"
+          onChange={(expr) =>
+            onChange((current) => setBlockIncludeWhen(current, block.id, expr))
+          }
+          value={block.includeWhen}
+        />
+      )}
       {included ? null : (
         <p className="text-xs text-muted-foreground">
           Hidden in preview for these sample answers.
@@ -282,23 +287,29 @@ function BlockRow({
       {editable ? (
         <>
           {included ? (
-          <p
-            className={cn(
-              "font-serif text-zinc-800",
-              block.type === "heading" && "text-2xl font-semibold leading-tight",
-              block.type === "paragraph" && "min-h-8 text-[15px] leading-7",
-              block.type === "list" &&
-                "border-l-2 border-zinc-200 pl-4 text-[15px] leading-7",
-              block.type === "table" &&
-                "rounded border border-zinc-300 p-2 text-sm",
-            )}
-          >
-            {preview || flattenText(block.children) || (
-              <span className="text-muted-foreground">Empty</span>
-            )}
-          </p>
+            <p
+              className={cn(
+                "font-serif text-zinc-800",
+                block.type === "heading" &&
+                  "text-2xl font-semibold leading-tight",
+                block.type === "paragraph" && "min-h-8 text-[15px] leading-7",
+                block.type === "list" &&
+                  "border-l-2 border-zinc-200 pl-4 text-[15px] leading-7",
+                block.type === "table" &&
+                  "rounded border border-zinc-300 p-2 text-sm",
+              )}
+            >
+              {preview || flattenText(block.children) || (
+                <span className="text-muted-foreground">Empty</span>
+              )}
+            </p>
           ) : null}
-          <WordingEditor block={block} form={form} onChange={onChange} />
+          <WordingEditor
+            block={block}
+            form={form}
+            onChange={onChange}
+            simple={simple}
+          />
         </>
       ) : null}
     </div>
@@ -309,10 +320,12 @@ function WordingEditor({
   block,
   form,
   onChange,
+  simple,
 }: {
   block: Block;
   form: FormSchema;
   onChange: (next: (current: Template) => Template) => void;
+  simple: boolean;
 }) {
   const children = block.children ?? [];
   const fields = listFormFields(form);
@@ -342,6 +355,7 @@ function WordingEditor({
           inline={child}
           key={`${block.id}-${index}`}
           onChange={onChange}
+          simple={simple}
         />
       ))}
     </div>
@@ -354,12 +368,14 @@ function InlineEditor({
   inline,
   fields,
   onChange,
+  simple,
 }: {
   blockId: string;
   index: number;
   inline: Inline;
   fields: ReturnType<typeof listFormFields>;
   onChange: (next: (current: Template) => Template) => void;
+  simple: boolean;
 }) {
   if (inline.type === "text") {
     return (
@@ -393,10 +409,10 @@ function InlineEditor({
       fields.find((field) => field.id === inline.field)?.label ?? inline.field;
     return (
       <div className="flex items-center gap-2 text-xs">
-        <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-amber-950">
-          {`{{${inline.field}}}`}
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-950">
+          {simple ? label : `{{${inline.field}}}`}
         </span>
-        <span className="text-muted-foreground">{label}</span>
+        {simple ? null : <span className="text-muted-foreground">{label}</span>}
         <Button
           onClick={() =>
             onChange((current) => removeInline(current, blockId, index))
@@ -411,10 +427,12 @@ function InlineEditor({
     );
   }
   const field = fields.find((entry) => entry.id === inline.field);
-  const options = field?.options ?? Object.keys(inline.variants).map((value) => ({
-    value,
-    label: value,
-  }));
+  const options =
+    field?.options ??
+    Object.keys(inline.variants).map((value) => ({
+      value,
+      label: value,
+    }));
   return (
     <div className="flex flex-col gap-1 rounded bg-sky-50 p-2 text-xs">
       <div className="flex items-center justify-between">

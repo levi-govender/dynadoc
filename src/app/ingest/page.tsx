@@ -49,14 +49,14 @@ export default async function IngestIndexPage() {
   return (
     <AppChrome email={session.user.email} role={membership.role}>
       <PageHeader
-        description="Upload a corpus, classify, then cluster into draft types. Nothing publishes until you confirm."
+        description="Upload samples, classify, then group into draft types. Nothing goes live until you publish in Studio."
         title="Ingest"
       />
       <Card>
         <CardHeader>
           <CardTitle>New job</CardTitle>
           <CardDescription>
-            PDF or DOCX. Jobs stay uploaded until you classify.
+            PDF or Word. Classify after upload.
           </CardDescription>
         </CardHeader>
         <CardContent>
