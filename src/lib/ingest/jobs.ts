@@ -26,6 +26,7 @@ import {
   splitIngestCluster,
   type IngestClusterState,
 } from "@/lib/ingest/cluster";
+import { importFromJson } from "@/lib/document-types/import";
 import { notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
@@ -214,6 +215,10 @@ export async function getIngestJob(args: {
       mode?: IngestMode;
       gatesApplied?: boolean;
       clusterState?: IngestClusterState;
+      savedDrafts?: {
+        familyId: string;
+        types: Array<{ id: string; slug: string; status: string }>;
+      };
     };
     return {
       job,
@@ -222,6 +227,7 @@ export async function getIngestJob(args: {
       mode: payload.mode,
       gatesApplied: Boolean(payload.gatesApplied),
       clusterState: payload.clusterState ?? null,
+      savedDrafts: payload.savedDrafts ?? null,
     };
   });
 }
@@ -369,6 +375,7 @@ export async function mergeIngestJobClusters(args: {
   const clusterState = mergeIngestClusters(
     loaded.clusterState,
     args.clusterIds,
+    loaded.files,
   );
   await saveClusterState({ ...args, loaded, clusterState });
   return getIngestJob(args);
@@ -389,6 +396,57 @@ export async function splitIngestJobCluster(args: {
     loaded.files,
   );
   await saveClusterState({ ...args, loaded, clusterState });
+  return getIngestJob(args);
+}
+
+export async function saveIngestJobDrafts(args: {
+  organizationId: string;
+  jobId: string;
+  confirmed: boolean;
+}) {
+  if (!args.confirmed) {
+    throw new IngestUploadError(
+      "Human review is required before saving a draft version",
+    );
+  }
+  const loaded = await getIngestJob(args);
+  if (!loaded.clusterState) {
+    throw new IngestUploadError("Cluster the job before saving drafts");
+  }
+  if (loaded.savedDrafts) {
+    throw new IngestUploadError("Draft types were already saved for this job");
+  }
+  const imported = await importFromJson({
+    organizationId: args.organizationId,
+    payload: loaded.clusterState.familyDraft,
+  });
+  if (imported.kind !== "family") {
+    throw new IngestUploadError("Ingest draft must be a family bundle");
+  }
+  if (imported.types.some((type) => type.status !== "draft")) {
+    throw new IngestUploadError("Ingest must not auto-publish types");
+  }
+  const savedDrafts = {
+    familyId: imported.family.id,
+    types: imported.types,
+  };
+  const nextPayload = {
+    ...(loaded.job.payload as Record<string, unknown>),
+    clusterState: loaded.clusterState,
+    savedDrafts,
+    published: false,
+  };
+  await withOrganization(args.organizationId, async (db) => {
+    await db
+      .update(ingestJobs)
+      .set({ payload: nextPayload })
+      .where(
+        and(
+          eq(ingestJobs.id, args.jobId),
+          organizationEq(ingestJobs.organizationId, args.organizationId),
+        ),
+      );
+  });
   return getIngestJob(args);
 }
 
@@ -415,6 +473,10 @@ export function serializeIngestJob(args: {
   mode?: string;
   gatesApplied?: boolean;
   clusterState?: IngestClusterState | null;
+  savedDrafts?: {
+    familyId: string;
+    types: Array<{ id: string; slug: string; status: string }>;
+  } | null;
 }) {
   return {
     id: args.job.id,
@@ -423,6 +485,7 @@ export function serializeIngestJob(args: {
     mode: args.mode ?? null,
     gatesApplied: Boolean(args.gatesApplied),
     clusterState: args.clusterState ?? null,
+    savedDrafts: args.savedDrafts ?? null,
     published: false,
     createdAt: args.job.createdAt.toISOString(),
     files: args.files.map((file) => ({

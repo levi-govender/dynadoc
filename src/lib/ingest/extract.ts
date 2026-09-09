@@ -16,6 +16,25 @@ export class InvalidIngestMetaError extends Error {
   }
 }
 
+export function stripLetterhead(text: string) {
+  const lines = text.split(/\r?\n/);
+  let skip = 0;
+  while (skip < Math.min(8, lines.length)) {
+    const line = lines[skip]!.trim().toLowerCase();
+    if (
+      !line ||
+      line.includes("logo") ||
+      line.includes("letterhead") ||
+      /pty ltd|incorporated|\bllc\b|\bstreet\b|\bavenue\b/.test(line)
+    ) {
+      skip += 1;
+      continue;
+    }
+    break;
+  }
+  return lines.slice(skip).join("\n");
+}
+
 export function parseIngestCategory(value: unknown): IngestCategory {
   if (
     typeof value === "string" &&
