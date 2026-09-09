@@ -23,6 +23,11 @@ export function AppNav({ role }: { role?: MembershipRole }) {
           History
         </Link>
       ) : null}
+      {role && canEditDraft(role) ? (
+        <Link className="underline" href="/ingest">
+          Ingest
+        </Link>
+      ) : null}
       {role ? (
         <Link className="underline" href="/inbox">
           Inbox

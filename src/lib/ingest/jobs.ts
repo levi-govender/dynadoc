@@ -1,0 +1,239 @@
+import { randomUUID } from "node:crypto";
+import { and, desc, eq } from "drizzle-orm";
+import { ingestJobFiles, ingestJobs } from "@/lib/db/schema";
+import { organizationEq, withOrganization } from "@/lib/db/tenant";
+import {
+  extractIngestText,
+  INGEST_FILE_MAX_BYTES,
+  INGEST_JOB_UPLOADED,
+  INGEST_MAX_FILES,
+  parseIngestCategory,
+  parseIngestMode,
+  type IngestCategory,
+  type IngestMode,
+} from "@/lib/ingest/extract";
+import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
+
+export class IngestJobNotFoundError extends Error {
+  constructor(message = "Ingest job not found") {
+    super(message);
+    this.name = "IngestJobNotFoundError";
+  }
+}
+
+export class IngestUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "IngestUploadError";
+  }
+}
+
+export type IngestUploadFile = {
+  filename: string;
+  contentType: string;
+  bytes: Buffer;
+};
+
+export function ingestFileObjectKey(args: {
+  organizationId: string;
+  jobId: string;
+  fileId: string;
+  filename: string;
+}) {
+  const ext = args.filename.toLowerCase().endsWith(".docx") ? "docx" : "pdf";
+  return buildObjectKey(
+    args.organizationId,
+    "ingest",
+    args.jobId,
+    `${args.fileId}.${ext}`,
+  );
+}
+
+export async function createIngestJob(args: {
+  organizationId: string;
+  category: unknown;
+  mode: unknown;
+  files: IngestUploadFile[];
+}) {
+  const category = parseIngestCategory(args.category);
+  const mode = parseIngestMode(args.mode);
+  if (args.files.length === 0) {
+    throw new IngestUploadError("At least one file is required");
+  }
+  if (args.files.length > INGEST_MAX_FILES) {
+    throw new IngestUploadError(`At most ${INGEST_MAX_FILES} files per job`);
+  }
+
+  const job = await withOrganization(args.organizationId, async (db) => {
+    const [row] = await db
+      .insert(ingestJobs)
+      .values({
+        organizationId: args.organizationId,
+        status: INGEST_JOB_UPLOADED,
+        payload: { category, mode },
+      })
+      .returning();
+    if (!row) {
+      throw new Error("Failed to create ingest job");
+    }
+    return row;
+  });
+
+  const files = [];
+  for (const file of args.files) {
+    files.push(
+      await storeIngestFile({
+        organizationId: args.organizationId,
+        jobId: job.id,
+        file,
+      }),
+    );
+  }
+  return { job, files, category, mode };
+}
+
+async function storeIngestFile(args: {
+  organizationId: string;
+  jobId: string;
+  file: IngestUploadFile;
+}) {
+  const extracted = await extractIngestText({
+    filename: args.file.filename,
+    contentType: args.file.contentType,
+    bytes: args.file.bytes,
+  });
+  let objectKey: string | null = null;
+  let sampleImageKey: string | null = null;
+  let error = extracted.error;
+  if (!error && args.file.bytes.byteLength > INGEST_FILE_MAX_BYTES) {
+    error = `File exceeds ${INGEST_FILE_MAX_BYTES} bytes`;
+  }
+  if (!error) {
+    const fileId = randomUUID();
+    const key = ingestFileObjectKey({
+      organizationId: args.organizationId,
+      jobId: args.jobId,
+      fileId,
+      filename: args.file.filename,
+    });
+    try {
+      await ensureBucket();
+      await putObject({
+        key,
+        body: args.file.bytes,
+        contentType: args.file.contentType || "application/octet-stream",
+        maxBytes: PDF_MAX_BYTES,
+      });
+      objectKey = key;
+      if (extracted.sampleImage) {
+        const imageKey = buildObjectKey(
+          args.organizationId,
+          "ingest",
+          args.jobId,
+          `${fileId}-page1.png`,
+        );
+        await putObject({
+          key: imageKey,
+          body: extracted.sampleImage,
+          contentType: "image/png",
+          maxBytes: PDF_MAX_BYTES,
+        });
+        sampleImageKey = imageKey;
+      }
+    } catch {
+      error = "Could not store file";
+    }
+  }
+
+  return withOrganization(args.organizationId, async (db) => {
+    const [row] = await db
+      .insert(ingestJobFiles)
+      .values({
+        organizationId: args.organizationId,
+        ingestJobId: args.jobId,
+        filename: args.file.filename,
+        contentType: args.file.contentType,
+        objectKey,
+        extractedText: extracted.text,
+        sampleImageKey,
+        error,
+      })
+      .returning();
+    if (!row) {
+      throw new Error("Failed to record ingest file");
+    }
+    return row;
+  });
+}
+
+export async function getIngestJob(args: {
+  organizationId: string;
+  jobId: string;
+}) {
+  return withOrganization(args.organizationId, async (db) => {
+    const [job] = await db
+      .select()
+      .from(ingestJobs)
+      .where(
+        and(
+          eq(ingestJobs.id, args.jobId),
+          organizationEq(ingestJobs.organizationId, args.organizationId),
+        ),
+      )
+      .limit(1);
+    if (!job) {
+      throw new IngestJobNotFoundError();
+    }
+    const files = await db
+      .select()
+      .from(ingestJobFiles)
+      .where(
+        and(
+          eq(ingestJobFiles.ingestJobId, args.jobId),
+          organizationEq(ingestJobFiles.organizationId, args.organizationId),
+        ),
+      )
+      .orderBy(ingestJobFiles.createdAt);
+    const payload = job.payload as {
+      category?: IngestCategory;
+      mode?: IngestMode;
+    };
+    return { job, files, category: payload.category, mode: payload.mode };
+  });
+}
+
+export async function listIngestJobs(args: { organizationId: string }) {
+  return withOrganization(args.organizationId, async (db) => {
+    return db
+      .select()
+      .from(ingestJobs)
+      .where(organizationEq(ingestJobs.organizationId, args.organizationId))
+      .orderBy(desc(ingestJobs.createdAt));
+  });
+}
+
+export function serializeIngestJob(args: {
+  job: { id: string; status: string; createdAt: Date };
+  files: Array<{
+    id: string;
+    filename: string;
+    error: string | null;
+    extractedText: string | null;
+  }>;
+  category?: string;
+  mode?: string;
+}) {
+  return {
+    id: args.job.id,
+    status: args.job.status,
+    category: args.category ?? null,
+    mode: args.mode ?? null,
+    createdAt: args.job.createdAt.toISOString(),
+    files: args.files.map((file) => ({
+      id: file.id,
+      filename: file.filename,
+      error: file.error,
+      extracted: Boolean(file.extractedText),
+    })),
+  };
+}

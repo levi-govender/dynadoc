@@ -14,6 +14,11 @@ import {
   NotificationNotFoundError,
 } from "@/lib/notifications";
 import {
+  IngestJobNotFoundError,
+  IngestUploadError,
+} from "@/lib/ingest/jobs";
+import { InvalidIngestMetaError } from "@/lib/ingest/extract";
+import {
   documentTypeErrorStatus,
   isDocumentTypeClientError,
 } from "@/lib/document-types/versions";
@@ -30,6 +35,15 @@ export function toAuthzResponse(error: unknown) {
   }
   if (error instanceof NotificationNotFoundError) {
     return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  if (error instanceof IngestJobNotFoundError) {
+    return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  if (
+    error instanceof InvalidIngestMetaError ||
+    error instanceof IngestUploadError
+  ) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
   if (error instanceof InvalidNotificationTypeError) {
     return NextResponse.json({ error: error.message }, { status: 400 });

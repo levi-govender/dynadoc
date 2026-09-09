@@ -285,3 +285,22 @@ export const ingestJobs = pgTable("ingest_jobs", {
     .defaultNow()
     .notNull(),
 });
+
+export const ingestJobFiles = pgTable("ingest_job_files", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  ingestJobId: uuid("ingest_job_id")
+    .notNull()
+    .references(() => ingestJobs.id, { onDelete: "cascade" }),
+  filename: text("filename").notNull(),
+  contentType: text("content_type").notNull().default(""),
+  objectKey: text("object_key"),
+  extractedText: text("extracted_text"),
+  sampleImageKey: text("sample_image_key"),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

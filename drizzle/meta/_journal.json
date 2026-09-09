@@ -64,6 +64,13 @@
       "when": 1788943492552,
       "tag": "0008_mighty_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788945235792,
+      "tag": "0009_short_midnight",
+      "breakpoints": true
     }
   ]
 }
