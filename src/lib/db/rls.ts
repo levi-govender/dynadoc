@@ -6,6 +6,7 @@ export const TENANT_RLS_TABLES = [
   "assets",
   "notifications",
   "ingest_jobs",
+  "ingest_job_files",
 ] as const;
 
 export function tenantIsolationSql(tableName: string) {
