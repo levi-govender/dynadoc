@@ -145,8 +145,12 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
           </p>
         ))}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        <p className="text-xs text-muted-foreground">
+          Generate always inserts a new instance. It does not rewrite a PDF
+          you already issued.
+        </p>
         <Button disabled={pending || !canGenerate} type="submit">
-          Generate PDF
+          Generate new PDF
         </Button>
       </form>
       <StudioPrintPreview resolved={resolved} snapshot={snapshot} />
