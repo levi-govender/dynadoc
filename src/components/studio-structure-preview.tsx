@@ -42,7 +42,10 @@ export function StudioStructurePreview({
               {block.type}
             </p>
             <p className="font-serif text-[13px] leading-6 text-zinc-800">
-              {(block.children ?? []).map((child) => child.text).join("") ||
+              {(block.rows ?? [])
+                .map((row) => row.map((child) => child.text).join(""))
+                .join(" · ") ||
+                (block.children ?? []).map((child) => child.text).join("") ||
                 "—"}
             </p>
           </li>

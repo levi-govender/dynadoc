@@ -99,6 +99,9 @@ export async function renderDocumentPdf(args: {
         ) : null}
         {resolved.blocks.map((block) => {
           const text = (block.children ?? []).map((child) => child.text).join("");
+          const rowTexts = (block.rows ?? []).map((row) =>
+            row.map((child) => child.text).join(""),
+          );
           if (block.type === "heading") {
             return (
               <Text
@@ -145,16 +148,40 @@ export async function renderDocumentPdf(args: {
               </View>
             );
           }
-          clause += 1;
-          const prefix = `${clauseNumber(clause - 1)}. `;
           if (block.type === "list") {
+            const items = rowTexts.length > 0 ? rowTexts : text ? [text] : [];
             return (
-              <Text key={block.id} style={{ marginBottom: 8 }}>
-                {prefix}
-                {text}
-              </Text>
+              <View key={block.id} style={{ marginBottom: 8 }}>
+                {items.map((item, index) => {
+                  clause += 1;
+                  return (
+                    <Text key={`${block.id}-${index}`} style={{ marginBottom: 4 }}>
+                      {`${clauseNumber(clause - 1)}. `}
+                      {item}
+                    </Text>
+                  );
+                })}
+              </View>
             );
           }
+          if (block.type === "table") {
+            const items = rowTexts.length > 0 ? rowTexts : text ? [text] : [];
+            return (
+              <View key={block.id} style={{ marginBottom: 8 }}>
+                {items.map((item, index) => {
+                  clause += 1;
+                  return (
+                    <Text key={`${block.id}-${index}`} style={{ marginBottom: 4 }}>
+                      {`${clauseNumber(clause - 1)}. `}
+                      {item}
+                    </Text>
+                  );
+                })}
+              </View>
+            );
+          }
+          clause += 1;
+          const prefix = `${clauseNumber(clause - 1)}. `;
           return (
             <Text key={block.id} style={{ marginBottom: 8 }}>
               {prefix}

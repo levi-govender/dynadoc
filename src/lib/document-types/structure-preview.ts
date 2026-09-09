@@ -32,5 +32,10 @@ export function resolvedBlockText(
   if (!block) {
     return undefined;
   }
+  if (block.rows && block.rows.length > 0) {
+    return block.rows
+      .map((row) => row.map((child) => child.text).join(""))
+      .join("\n");
+  }
   return (block.children ?? []).map((child) => child.text).join("");
 }

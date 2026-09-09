@@ -83,3 +83,65 @@ test("draft watermark PDF includes DRAFT; published PDF does not", async () => {
   assert.match(draft.toString("latin1"), /DRAFT/);
   assert.doesNotMatch(published.toString("latin1"), /\/Subject\s*\(DRAFT\)/);
 });
+
+test("two schedule rows appear as two table rows in the PDF", async () => {
+  const { isPdfBuffer, renderDocumentPdf } = await import("./render");
+  const snapshot = parseDocumentTypeVersionSnapshot({
+    ...parseDocumentTypeVersionSnapshot(fixture),
+    formSchema: {
+      schemaVersion: 1,
+      groups: [
+        ...parseDocumentTypeVersionSnapshot(fixture).formSchema.groups,
+        {
+          id: "schedule",
+          title: "Schedule",
+          repeatable: true,
+          fields: [
+            {
+              id: "description",
+              type: "text",
+              label: "Item",
+              required: true,
+            },
+          ],
+        },
+      ],
+    },
+    template: {
+      schemaVersion: 1,
+      blocks: [
+        {
+          id: "schedule-table",
+          type: "table",
+          children: [{ type: "bind", field: "schedule[].description" }],
+        },
+      ],
+    },
+  });
+  const resolved = resolveDocument(snapshot, {
+    employmentType: "contractor",
+    jobTitle: "Engineer",
+    startDate: "2026-01-01",
+    schedule: [{ description: "Kickoff-row" }, { description: "Handover-row" }],
+  });
+  const bytes = await renderDocumentPdf({
+    theme: snapshot.styleTheme,
+    document: resolved.document,
+    logo: { kind: "none" },
+    answers: resolved.answers,
+  });
+  assert.ok(isPdfBuffer(bytes));
+  assert.equal(resolved.document.blocks[0]?.type, "table");
+  assert.equal(resolved.document.blocks[0]?.rows?.length, 2);
+
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: Uint8Array.from(bytes) });
+  try {
+    const extracted = await parser.getText();
+    const text = extracted.text ?? "";
+    assert.match(text, /Kickoff-row/);
+    assert.match(text, /Handover-row/);
+  } finally {
+    await parser.destroy();
+  }
+});

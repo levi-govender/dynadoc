@@ -1,4 +1,9 @@
 import { evaluate, readAnswer, type Answers } from "@/lib/expr/evaluate";
+import {
+  expansionGroup,
+  overlayRepeatableRow,
+  repeatableRows,
+} from "@/lib/document-types/repeatable";
 import type {
   Block,
   DocumentTypeVersionSnapshot,
@@ -26,6 +31,7 @@ export type ResolvedBlock = {
   id: string;
   type: Block["type"];
   children?: ResolvedSpan[];
+  rows?: ResolvedSpan[][];
 };
 
 export type ResolvedDocument = {
@@ -195,6 +201,25 @@ export function stripInactiveAnswers(
     if (!activeGroups.has(group.id)) {
       continue;
     }
+    if (group.repeatable) {
+      kept[group.id] = repeatableRows(
+        answers,
+        group.id,
+        Number.POSITIVE_INFINITY,
+      ).map((row) => {
+        const keptRow: Record<string, unknown> = {};
+        for (const field of group.fields) {
+          if (!fieldIsVisible(field, answers)) {
+            continue;
+          }
+          if (Object.hasOwn(row, field.id)) {
+            keptRow[field.id] = row[field.id];
+          }
+        }
+        return keptRow;
+      });
+      continue;
+    }
     for (const field of group.fields) {
       if (!fieldIsVisible(field, answers)) {
         continue;
@@ -207,7 +232,7 @@ export function stripInactiveAnswers(
   return kept;
 }
 
-const BINDING = /\{\{([A-Za-z0-9_.]+)\}\}/g;
+const BINDING = /\{\{([^}]+)\}\}/g;
 
 function interpolateText(
   text: string,
@@ -260,12 +285,31 @@ function resolveInline(
 function resolveBlock(
   block: Block,
   answers: Answers,
+  formSchema: FormSchema,
   warnings: ResolveWarning[],
 ): ResolvedBlock | null {
   if (block.includeWhen && !evaluate(block.includeWhen, answers)) {
     return null;
   }
-  const children = (block.children ?? []).map((inline) =>
+  const inlines = block.children ?? [];
+  const group = expansionGroup(formSchema, inlines);
+  if (group) {
+    const rows = repeatableRows(answers, group.id).map((row) =>
+      inlines.map((inline) =>
+        resolveInline(
+          inline,
+          overlayRepeatableRow(answers, group, row),
+          warnings,
+        ),
+      ),
+    );
+    const resolved: ResolvedBlock = { id: block.id, type: block.type, rows };
+    if (rows[0]) {
+      resolved.children = rows[0];
+    }
+    return resolved;
+  }
+  const children = inlines.map((inline) =>
     resolveInline(inline, answers, warnings),
   );
   const resolved: ResolvedBlock = { id: block.id, type: block.type };
@@ -291,7 +335,12 @@ export function resolveDocument(
   const blocks: ResolvedBlock[] = [];
 
   for (const block of snapshot.template.blocks) {
-    const resolved = resolveBlock(block, answers, warnings);
+    const resolved = resolveBlock(
+      block,
+      answers,
+      snapshot.formSchema,
+      warnings,
+    );
     if (resolved) {
       blocks.push(resolved);
     }

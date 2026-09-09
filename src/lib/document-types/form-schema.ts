@@ -1,3 +1,4 @@
+import { listBindableFields } from "@/lib/document-types/repeatable";
 import type { Expr, Field, FieldGroup, FormSchema } from "@/types/document-type";
 import { formSchemaSchema } from "@/types/document-type";
 
@@ -198,6 +199,17 @@ export function updateSelectOption(
   });
 }
 
+export function setGroupRepeatable(
+  form: FormSchema,
+  groupId: string,
+  repeatable: boolean,
+): FormSchema {
+  return mapGroup(form, groupId, (group) => ({
+    ...group,
+    repeatable: repeatable ? true : undefined,
+  }));
+}
+
 export function setGroupVisibleWhen(
   form: FormSchema,
   groupId: string,
@@ -240,12 +252,10 @@ export function parseFormSchema(input: unknown): FormSchema {
 }
 
 export function listFormFields(form: FormSchema) {
-  return form.groups.flatMap((group) =>
-    group.fields.map((field) => ({
-      id: field.id,
-      label: field.label,
-      type: field.type,
-      options: field.type === "select" ? field.options : undefined,
-    })),
-  );
+  return listBindableFields(form).map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    type: entry.type,
+    options: entry.options,
+  }));
 }

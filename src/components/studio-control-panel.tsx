@@ -18,6 +18,7 @@ import {
   setFieldLabel,
   setFieldRequired,
   setFieldVisibleWhen,
+  setGroupRepeatable,
   setGroupVisibleWhen,
   updateSelectOption,
 } from "@/lib/document-types/form-schema";
@@ -90,6 +91,22 @@ export function StudioControlPanel({
                 Delete group
               </Button>
             </div>
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                checked={group.repeatable === true}
+                onChange={(event) =>
+                  patchForm((current) =>
+                    setGroupRepeatable(
+                      current,
+                      group.id,
+                      event.target.checked,
+                    ),
+                  )
+                }
+                type="checkbox"
+              />
+              Repeatable (schedule items, extra parties)
+            </label>
             <VisibleWhenEditor
               form={form}
               onChange={(expr) =>

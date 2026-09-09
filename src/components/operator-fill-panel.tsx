@@ -7,6 +7,7 @@ import { StudioPrintPreview } from "@/components/studio-print-preview";
 import { samplePreview } from "@/lib/document-types/branching";
 import { studioResolve } from "@/lib/document-types/structure-preview";
 import { collectOperatorIssues } from "@/lib/document-types/answers-schema";
+import { REPEATABLE_MAX_ROWS } from "@/lib/document-types/repeatable";
 import type { Answers } from "@/lib/expr/evaluate";
 import type { DocumentTypeVersionSnapshot, Field } from "@/types/document-type";
 
@@ -43,7 +44,7 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
   const groups = useMemo(() => {
     const byGroup = new Map<
       string,
-      { id: string; title: string; fields: Field[] }
+      { id: string; title: string; repeatable?: boolean; fields: Field[] }
     >();
     for (const entry of preview.fields) {
       const existing = byGroup.get(entry.group.id);
@@ -53,12 +54,66 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
         byGroup.set(entry.group.id, {
           id: entry.group.id,
           title: entry.group.title,
+          repeatable: entry.group.repeatable,
           fields: [entry.field],
         });
       }
     }
     return [...byGroup.values()];
   }, [preview.fields]);
+
+  function setRowField(
+    groupId: string,
+    index: number,
+    fieldId: string,
+    value: unknown,
+  ) {
+    setAnswers((current) => {
+      const rows = Array.isArray(current[groupId])
+        ? [...(current[groupId] as Array<Record<string, unknown>>)]
+        : [];
+      const row = { ...(rows[index] ?? {}) };
+      if (value === undefined || value === "") {
+        delete row[fieldId];
+      } else {
+        row[fieldId] = value;
+      }
+      rows[index] = row;
+      return samplePreview(snapshot.formSchema, {
+        ...current,
+        [groupId]: rows,
+      }).answers;
+    });
+  }
+
+  function addRow(groupId: string) {
+    setAnswers((current) => {
+      const rows = Array.isArray(current[groupId])
+        ? [...(current[groupId] as Array<Record<string, unknown>>)]
+        : [];
+      if (rows.length >= REPEATABLE_MAX_ROWS) {
+        return current;
+      }
+      rows.push({});
+      return samplePreview(snapshot.formSchema, {
+        ...current,
+        [groupId]: rows,
+      }).answers;
+    });
+  }
+
+  function removeRow(groupId: string, index: number) {
+    setAnswers((current) => {
+      const rows = Array.isArray(current[groupId])
+        ? [...(current[groupId] as Array<Record<string, unknown>>)]
+        : [];
+      rows.splice(index, 1);
+      return samplePreview(snapshot.formSchema, {
+        ...current,
+        [groupId]: rows,
+      }).answers;
+    });
+  }
 
   function setField(fieldId: string, value: unknown) {
     setAnswers((current) => {
@@ -117,26 +172,82 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
         {groups.map((group) => (
           <fieldset className="mb-6 flex flex-col gap-3" key={group.id}>
             <legend className="text-sm font-medium">{group.title}</legend>
-            {group.fields.map((field) => (
-              <label className="flex flex-col gap-1 text-sm" key={field.id}>
-                <span>
-                  {field.label}
-                  {field.required ? (
-                    <span className="text-muted-foreground"> (required)</span>
-                  ) : null}
-                </span>
-                <FieldInput
-                  field={field}
-                  onChange={(value) => setField(field.id, value)}
-                  value={stripped[field.id]}
-                />
-                {(issuesByField.get(field.id) ?? []).map((message) => (
-                  <p className="text-xs text-destructive" key={message}>
-                    {message}
-                  </p>
+            {group.repeatable ? (
+              <>
+                {(Array.isArray(stripped[group.id])
+                  ? (stripped[group.id] as Array<Record<string, unknown>>)
+                  : []
+                ).map((row, index) => (
+                  <div className="flex flex-col gap-3 rounded-md border p-3" key={index}>
+                    {group.fields.map((field) => (
+                      <label className="flex flex-col gap-1 text-sm" key={field.id}>
+                        <span>
+                          {field.label}
+                          {field.required ? (
+                            <span className="text-muted-foreground">
+                              {" "}
+                              (required)
+                            </span>
+                          ) : null}
+                        </span>
+                        <FieldInput
+                          field={field}
+                          onChange={(value) =>
+                            setRowField(group.id, index, field.id, value)
+                          }
+                          value={row[field.id]}
+                        />
+                        {(issuesByField.get(field.id) ?? []).map((message) => (
+                          <p className="text-xs text-destructive" key={message}>
+                            {message}
+                          </p>
+                        ))}
+                      </label>
+                    ))}
+                    <Button
+                      onClick={() => removeRow(group.id, index)}
+                      type="button"
+                      variant="outline"
+                    >
+                      Remove row
+                    </Button>
+                  </div>
                 ))}
-              </label>
-            ))}
+                <Button
+                  disabled={
+                    (Array.isArray(stripped[group.id])
+                      ? stripped[group.id].length
+                      : 0) >= REPEATABLE_MAX_ROWS
+                  }
+                  onClick={() => addRow(group.id)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Add row
+                </Button>
+              </>
+            ) : (
+              group.fields.map((field) => (
+                <label className="flex flex-col gap-1 text-sm" key={field.id}>
+                  <span>
+                    {field.label}
+                    {field.required ? (
+                      <span className="text-muted-foreground"> (required)</span>
+                    ) : null}
+                  </span>
+                  <FieldInput
+                    field={field}
+                    onChange={(value) => setField(field.id, value)}
+                    value={stripped[field.id]}
+                  />
+                  {(issuesByField.get(field.id) ?? []).map((message) => (
+                    <p className="text-xs text-destructive" key={message}>
+                      {message}
+                    </p>
+                  ))}
+                </label>
+              ))
+            )}
           </fieldset>
         ))}
         {formIssues.map((message) => (

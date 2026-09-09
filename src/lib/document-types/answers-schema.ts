@@ -1,5 +1,6 @@
 import { z, ZodError } from "zod";
 import { samplePreview } from "@/lib/document-types/branching";
+import { REPEATABLE_MAX_ROWS } from "@/lib/document-types/repeatable";
 import type { Answers } from "@/lib/expr/evaluate";
 import type { Field, FormSchema, FormValidation } from "@/types/document-type";
 
@@ -44,6 +45,41 @@ function fieldValueSchema(field: Field) {
     (entry) => (entry === "" || entry === undefined ? undefined : entry),
     value.optional(),
   );
+}
+
+function operatorAnswersSchema(
+  form: FormSchema,
+  preview: ReturnType<typeof samplePreview>,
+) {
+  const shape: Record<string, z.ZodType> = {};
+  const fieldsByGroup = new Map<string, Field[]>();
+  for (const entry of preview.fields) {
+    const list = fieldsByGroup.get(entry.group.id) ?? [];
+    list.push(entry.field);
+    fieldsByGroup.set(entry.group.id, list);
+  }
+  for (const group of form.groups) {
+    if (!preview.activeGroups.has(group.id)) {
+      continue;
+    }
+    const fields = fieldsByGroup.get(group.id) ?? [];
+    if (group.repeatable) {
+      const rowShape: Record<string, z.ZodType> = {};
+      for (const field of fields) {
+        rowShape[field.id] = fieldValueSchema(field);
+      }
+      let rows = z.array(z.object(rowShape)).max(REPEATABLE_MAX_ROWS);
+      if (fields.some((field) => field.required)) {
+        rows = rows.min(1);
+      }
+      shape[group.id] = rows;
+      continue;
+    }
+    for (const field of fields) {
+      shape[field.id] = fieldValueSchema(field);
+    }
+  }
+  return z.object(shape);
 }
 
 function comparable(value: unknown): number | string | null {
@@ -112,6 +148,26 @@ function validationIssues(form: FormSchema, answers: Answers): OperatorIssue[] {
   return issues;
 }
 
+function repeatableCapIssues(
+  form: FormSchema,
+  answers: Answers,
+): OperatorIssue[] {
+  const issues: OperatorIssue[] = [];
+  for (const group of form.groups) {
+    if (!group.repeatable) {
+      continue;
+    }
+    const value = answers[group.id];
+    if (Array.isArray(value) && value.length > REPEATABLE_MAX_ROWS) {
+      issues.push({
+        fieldId: group.id,
+        message: `At most ${REPEATABLE_MAX_ROWS} rows`,
+      });
+    }
+  }
+  return issues;
+}
+
 function issuesFromZod(error: ZodError): OperatorIssue[] {
   return error.issues.map((issue) => ({
     fieldId: issue.path[0] !== undefined ? String(issue.path[0]) : undefined,
@@ -127,15 +183,15 @@ export function collectOperatorIssues(
   if (!incoming.success) {
     return issuesFromZod(incoming.error);
   }
+  const capIssues = repeatableCapIssues(form, incoming.data);
+  if (capIssues.length > 0) {
+    return capIssues;
+  }
   const preview = samplePreview(form, incoming.data);
   if (preview.error) {
     return [{ message: preview.error.message }];
   }
-  const shape: Record<string, z.ZodType> = {};
-  for (const { field } of preview.fields) {
-    shape[field.id] = fieldValueSchema(field);
-  }
-  const parsed = z.object(shape).safeParse(preview.answers);
+  const parsed = operatorAnswersSchema(form, preview).safeParse(preview.answers);
   if (!parsed.success) {
     return issuesFromZod(parsed.error);
   }
@@ -147,15 +203,15 @@ export function parseOperatorAnswers(
   input: unknown,
 ): Answers {
   const incoming = answersRecordSchema.parse(input ?? {});
+  const capIssues = repeatableCapIssues(form, incoming);
+  if (capIssues.length > 0) {
+    throw new OperatorAnswersError(capIssues);
+  }
   const preview = samplePreview(form, incoming);
   if (preview.error) {
     throw preview.error;
   }
-  const shape: Record<string, z.ZodType> = {};
-  for (const { field } of preview.fields) {
-    shape[field.id] = fieldValueSchema(field);
-  }
-  const answers = z.object(shape).parse(preview.answers);
+  const answers = operatorAnswersSchema(form, preview).parse(preview.answers);
   const issues = validationIssues(form, answers);
   if (issues.length > 0) {
     throw new OperatorAnswersError(issues);

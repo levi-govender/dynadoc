@@ -198,17 +198,32 @@ export function StudioDraftEditor({ documentTypeId, initialSnapshot }: Props) {
         <SampleAnswersPanel
           answers={preview.answers}
           error={preview.error?.message ?? null}
-          fields={preview.fields.map((entry) => ({
-            field: entry.field,
-            groupTitle: entry.group.title,
-          }))}
-          onChange={(fieldId, value) => {
-            const next = { ...sampleAnswers };
-            if (value === undefined || value === "") {
-              delete next[fieldId];
-            } else {
-              next[fieldId] = value;
+          groups={(() => {
+            const byGroup = new Map<
+              string,
+              {
+                id: string;
+                title: string;
+                repeatable?: boolean;
+                fields: typeof preview.fields[number]["field"][];
+              }
+            >();
+            for (const entry of preview.fields) {
+              const existing = byGroup.get(entry.group.id);
+              if (existing) {
+                existing.fields.push(entry.field);
+              } else {
+                byGroup.set(entry.group.id, {
+                  id: entry.group.id,
+                  title: entry.group.title,
+                  repeatable: entry.group.repeatable,
+                  fields: [entry.field],
+                });
+              }
             }
+            return [...byGroup.values()];
+          })()}
+          onChange={(next) => {
             setSampleAnswers(samplePreview(form, next).answers);
           }}
         />

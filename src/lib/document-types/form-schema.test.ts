@@ -7,6 +7,7 @@ import {
   deleteGroup,
   moveField,
   setFieldRequired,
+  setGroupRepeatable,
 } from "./form-schema";
 
 test("addField uses a stable UUID id and can mark required", () => {
@@ -45,4 +46,11 @@ test("deleteGroup keeps at least one group", () => {
   assert.equal(two.groups.length, 2);
   const one = deleteGroup(two, two.groups[1]?.id ?? "");
   assert.equal(one.groups.length, 1);
+});
+
+test("setGroupRepeatable marks a group for row answers", () => {
+  const form = emptyDraftSnapshot().formSchema;
+  const groupId = form.groups[0]?.id ?? "";
+  const next = setGroupRepeatable(form, groupId, true);
+  assert.equal(next.groups[0]?.repeatable, true);
 });

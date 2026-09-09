@@ -89,6 +89,9 @@ export function StudioPrintPreview({
                   text={(block.children ?? [])
                     .map((child) => child.text)
                     .join("")}
+                  rows={(block.rows ?? []).map((row) =>
+                    row.map((child) => child.text).join(""),
+                  )}
                   type={block.type}
                 />
               ))}
@@ -131,12 +134,14 @@ export function StudioPrintPreview({
 function PrintBlock({
   type,
   text,
+  rows,
   headingFamily,
   headingSize,
   headingWeight,
 }: {
   type: string;
   text: string;
+  rows: string[];
   headingFamily: string;
   headingSize: string;
   headingWeight: string | number;
@@ -162,15 +167,25 @@ function PrintBlock({
     );
   }
   if (type === "list") {
-    return <ul className="list-disc pl-5">{text ? <li>{text}</li> : null}</ul>;
+    const items = rows.length > 0 ? rows : text ? [text] : [];
+    return (
+      <ul className="list-disc pl-5">
+        {items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    );
   }
   if (type === "table") {
+    const items = rows.length > 0 ? rows : text ? [text] : [];
     return (
       <table className="w-full border border-zinc-400 text-sm">
         <tbody>
-          <tr>
-            <td className="border border-zinc-400 p-2">{text}</td>
-          </tr>
+          {items.map((item, index) => (
+            <tr key={index}>
+              <td className="border border-zinc-400 p-2">{item}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     );
