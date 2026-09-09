@@ -33,6 +33,9 @@ yarn-error.log*
 # env files — never commit, including examples
 .env*
 
+# local ingest dumps (uploaded corpora live in MinIO/S3, not the repo)
+/ingest-scratch/
+
 # vercel
 .vercel
 

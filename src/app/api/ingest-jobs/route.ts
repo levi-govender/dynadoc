@@ -23,12 +23,17 @@ export async function GET() {
     });
     return NextResponse.json({
       jobs: jobs.map((job) => {
-        const payload = job.payload as { category?: string; mode?: string };
+        const payload = job.payload as {
+          category?: string;
+          mode?: string;
+          gatesApplied?: boolean;
+        };
         return serializeIngestJob({
           job,
           files: [],
           category: payload.category,
           mode: payload.mode,
+          gatesApplied: payload.gatesApplied,
         });
       }),
     });

@@ -21,6 +21,8 @@ export type IngestClassification = IngestClassificationLabels & {
   holdout: boolean;
   inFamily: boolean;
   source: "heuristic" | "llm";
+  clusterEligible?: boolean;
+  gateReason?: string;
 };
 
 export function finalizeClassification(args: {

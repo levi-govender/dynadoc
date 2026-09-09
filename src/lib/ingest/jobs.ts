@@ -18,6 +18,8 @@ import {
   classifyWithOpenAi,
   type IngestClassification,
 } from "@/lib/ingest/classify";
+import { applyIngestGates } from "@/lib/ingest/gates";
+import { notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
 export class IngestJobNotFoundError extends Error {
@@ -203,18 +205,29 @@ export async function getIngestJob(args: {
     const payload = job.payload as {
       category?: IngestCategory;
       mode?: IngestMode;
+      gatesApplied?: boolean;
     };
-    return { job, files, category: payload.category, mode: payload.mode };
+    return {
+      job,
+      files,
+      category: payload.category,
+      mode: payload.mode,
+      gatesApplied: Boolean(payload.gatesApplied),
+    };
   });
 }
 
 export async function classifyIngestJob(args: {
   organizationId: string;
   jobId: string;
+  userId?: string;
 }) {
   const loaded = await getIngestJob(args);
   if (!loaded.category) {
     throw new IngestUploadError("Ingest job is missing a declared category");
+  }
+  if (!loaded.mode) {
+    throw new IngestUploadError("Ingest job is missing a declared mode");
   }
   const declaredCategory = loaded.category;
   for (const file of loaded.files) {
@@ -242,10 +255,34 @@ export async function classifyIngestJob(args: {
         );
     });
   }
+  const classified = await getIngestJob(args);
+  const gated = applyIngestGates({
+    mode: loaded.mode,
+    files: classified.files,
+  });
+  for (const file of gated.files) {
+    await withOrganization(args.organizationId, async (db) => {
+      await db
+        .update(ingestJobFiles)
+        .set({ classification: file.classification })
+        .where(
+          and(
+            eq(ingestJobFiles.id, file.id),
+            organizationEq(ingestJobFiles.organizationId, args.organizationId),
+          ),
+        );
+    });
+  }
+  const nextPayload = {
+    ...(classified.job.payload as Record<string, unknown>),
+    category: loaded.category,
+    mode: loaded.mode,
+    gatesApplied: true,
+  };
   await withOrganization(args.organizationId, async (db) => {
     await db
       .update(ingestJobs)
-      .set({ status: INGEST_JOB_CLASSIFIED })
+      .set({ status: INGEST_JOB_CLASSIFIED, payload: nextPayload })
       .where(
         and(
           eq(ingestJobs.id, args.jobId),
@@ -253,6 +290,21 @@ export async function classifyIngestJob(args: {
         ),
       );
   });
+  const mismatchHoldouts = gated.holdouts.filter(
+    (holdout) => holdout.reason !== "extract_error",
+  );
+  if (args.userId && mismatchHoldouts.length > 0) {
+    await notify({
+      organizationId: args.organizationId,
+      userId: args.userId,
+      type: "ingest_holdout",
+      payload: {
+        jobId: args.jobId,
+        query: `ingest_job:${args.jobId}:holdout`,
+        files: mismatchHoldouts,
+      },
+    });
+  }
   return getIngestJob(args);
 }
 
@@ -277,12 +329,14 @@ export function serializeIngestJob(args: {
   }>;
   category?: string;
   mode?: string;
+  gatesApplied?: boolean;
 }) {
   return {
     id: args.job.id,
     status: args.job.status,
     category: args.category ?? null,
     mode: args.mode ?? null,
+    gatesApplied: Boolean(args.gatesApplied),
     createdAt: args.job.createdAt.toISOString(),
     files: args.files.map((file) => ({
       id: file.id,
