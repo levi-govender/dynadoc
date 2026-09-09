@@ -1,7 +1,5 @@
-import { eq } from "drizzle-orm";
-import { instances } from "@/lib/db/schema";
+import { attachIssuedPdfKey } from "@/lib/document-types/instances";
 import { PDF_MAX_BYTES, buildObjectKey, putObject } from "@/lib/storage";
-import { withOrganization } from "@/lib/db/tenant";
 import { resolvePdfLogo } from "@/lib/pdf/logo";
 import { renderDocumentPdf } from "@/lib/pdf/render";
 import type { ResolveResult } from "@/lib/resolver/resolve";
@@ -47,11 +45,10 @@ export async function issueInstancePdf(args: {
       maxBytes: PDF_MAX_BYTES,
     });
     objectKey = key;
-    await withOrganization(args.organizationId, async (db) => {
-      await db
-        .update(instances)
-        .set({ issuedPdfKey: key })
-        .where(eq(instances.id, args.instanceId));
+    await attachIssuedPdfKey({
+      organizationId: args.organizationId,
+      instanceId: args.instanceId,
+      objectKey: key,
     });
   } catch {
     objectKey = null;

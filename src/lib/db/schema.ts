@@ -230,8 +230,10 @@ export const instances = pgTable("instances", {
   documentTypeVersionId: uuid("document_type_version_id")
     .notNull()
     .references(() => documentTypeVersions.id, { onDelete: "restrict" }),
+  /** Frozen at insert. Never update answers, resolvedAst, version, actor, or createdAt. */
   answers: jsonb("answers").notNull(),
   resolvedAst: jsonb("resolved_ast").notNull(),
+  /** Set once after a successful PDF put. Later updates must no-op. */
   issuedPdfKey: text("issued_pdf_key"),
   createdBy: text("created_by").references(() => user.id, {
     onDelete: "set null",

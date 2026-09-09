@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { documentTypeVersions, documentTypes, instances } from "@/lib/db/schema";
 import { organizationEq, withOrganization } from "@/lib/db/tenant";
 
@@ -40,5 +40,49 @@ export async function getInstance(args: {
       throw new InstanceNotFoundError();
     }
     return row;
+  });
+}
+
+/** Sets issuedPdfKey only while it is still null (retry after a mid-generate failure). */
+export async function attachIssuedPdfKey(args: {
+  organizationId: string;
+  instanceId: string;
+  objectKey: string;
+}) {
+  return withOrganization(args.organizationId, async (db) => {
+    const [updated] = await db
+      .update(instances)
+      .set({ issuedPdfKey: args.objectKey })
+      .where(
+        and(
+          eq(instances.id, args.instanceId),
+          organizationEq(instances.organizationId, args.organizationId),
+          isNull(instances.issuedPdfKey),
+        ),
+      )
+      .returning({
+        id: instances.id,
+        issuedPdfKey: instances.issuedPdfKey,
+      });
+    if (updated) {
+      return updated;
+    }
+    const [existing] = await db
+      .select({
+        id: instances.id,
+        issuedPdfKey: instances.issuedPdfKey,
+      })
+      .from(instances)
+      .where(
+        and(
+          eq(instances.id, args.instanceId),
+          organizationEq(instances.organizationId, args.organizationId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new InstanceNotFoundError();
+    }
+    return existing;
   });
 }
