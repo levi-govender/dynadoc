@@ -160,6 +160,15 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
               "pdfDownload" in body &&
               typeof body.pdfDownload === "string"
             ) {
+              const word =
+                "wordDownload" in body && typeof body.wordDownload === "string"
+                  ? body.wordDownload
+                  : null;
+              if (word) {
+                const link = document.createElement("a");
+                link.href = word;
+                link.click();
+              }
               window.location.href = body.pdfDownload;
             }
           });

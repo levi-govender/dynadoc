@@ -93,6 +93,7 @@ export default async function InstanceHistoryPage({
               <th className="py-2 pr-4">When</th>
               <th className="py-2 pr-4">Who</th>
               <th className="py-2">PDF</th>
+              <th className="py-2">Word</th>
             </tr>
           </thead>
           <tbody>
@@ -109,9 +110,14 @@ export default async function InstanceHistoryPage({
                 <td className="py-2 pr-4">
                   {row.createdByName ?? row.createdByEmail ?? "Unknown"}
                 </td>
-                <td className="py-2">
+                <td className="py-2 pr-4">
                   <Link className="underline" href={`/api/instances/${row.id}/pdf`}>
-                    Download
+                    PDF
+                  </Link>
+                </td>
+                <td className="py-2">
+                  <Link className="underline" href={`/api/instances/${row.id}/docx`}>
+                    Word
                   </Link>
                 </td>
               </tr>

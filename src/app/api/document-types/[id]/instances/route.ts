@@ -85,6 +85,7 @@ export async function POST(
         filename: issued.filename,
         issuedPdfKey: issued.objectKey,
         pdfDownload: `/api/instances/${instance.id}/pdf`,
+        wordDownload: `/api/instances/${instance.id}/docx`,
       },
       { status: 201 },
     );
