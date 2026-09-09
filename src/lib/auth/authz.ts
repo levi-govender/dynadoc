@@ -10,6 +10,10 @@ import {
 } from "@/lib/auth/invites";
 import { OperatorAnswersError } from "@/lib/document-types/answers-schema";
 import {
+  InvalidNotificationTypeError,
+  NotificationNotFoundError,
+} from "@/lib/notifications";
+import {
   documentTypeErrorStatus,
   isDocumentTypeClientError,
 } from "@/lib/document-types/versions";
@@ -23,6 +27,12 @@ export function toAuthzResponse(error: unknown) {
   }
   if (error instanceof InviteNotFoundError) {
     return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  if (error instanceof NotificationNotFoundError) {
+    return NextResponse.json({ error: error.message }, { status: 404 });
+  }
+  if (error instanceof InvalidNotificationTypeError) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
   if (error instanceof AlreadyMemberError) {
     return NextResponse.json({ error: error.message }, { status: 409 });
