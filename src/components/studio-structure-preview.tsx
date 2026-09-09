@@ -26,8 +26,8 @@ export function StudioStructurePreview({
       </p>
       {warnings.length > 0 ? (
         <ul className="flex flex-col gap-1 text-xs text-amber-800">
-          {warnings.map((warning) => (
-            <li key={`${warning.field}-${warning.placeholder}`}>
+          {warnings.map((warning, index) => (
+            <li key={`${warning.field}-${warning.placeholder}-${index}`}>
               Missing {warning.field}: {warning.placeholder}
             </li>
           ))}
