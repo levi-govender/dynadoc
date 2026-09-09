@@ -66,7 +66,7 @@ export function StudioControlPanel({
           </p>
         ))}
         {form.groups.map((group) => (
-          <div className="flex flex-col gap-3 rounded-xl border p-3" key={group.id}>
+          <div className="flex flex-col gap-3 rounded-md border p-3" key={group.id}>
             <div className="flex gap-2">
               <Input
                 aria-label="Group title"

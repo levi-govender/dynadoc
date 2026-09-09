@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { OperatorFillPanel } from "@/components/operator-fill-panel";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
@@ -32,10 +32,11 @@ export default async function FillTypePage({
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Fill is only available to operators, authors, and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Fill is only available to operators, authors, and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -57,19 +58,15 @@ export default async function FillTypePage({
     throw error;
   }
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-col gap-2 p-6 pb-0">
-        <AppNav role={membership.role} />
+    <AppChrome email={session.user.email} flush role={membership.role}>
+      <div className="flex flex-col gap-1 border-b bg-card px-6 py-4">
         <h1 className="text-xl font-semibold">{published.type.name}</h1>
         <p className="text-sm text-muted-foreground">
-          Published version only. Each generate creates a new instance and a
-          new PDF. Issued files are never overwritten.
+          Published version only. Each generate creates a new instance and a new
+          PDF. Issued files are never overwritten.
         </p>
       </div>
-      <OperatorFillPanel
-        documentTypeId={id}
-        snapshot={published.snapshot}
-      />
-    </div>
+      <OperatorFillPanel documentTypeId={id} snapshot={published.snapshot} />
+    </AppChrome>
   );
 }

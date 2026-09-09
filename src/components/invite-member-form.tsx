@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 
 export function InviteMemberForm() {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"operator" | "author" | "org_admin">("operator");
+  const [role, setRole] = useState<"operator" | "author" | "org_admin">(
+    "operator",
+  );
   const [error, setError] = useState<string | null>(null);
   const [acceptUrl, setAcceptUrl] = useState<string | null>(null);
   const [delivered, setDelivered] = useState<boolean | null>(null);
@@ -46,32 +48,34 @@ export function InviteMemberForm() {
             typeof payload.acceptUrl === "string"
           ) {
             setAcceptUrl(payload.acceptUrl);
-            setDelivered(
-              "delivered" in payload && payload.delivered === true,
-            );
+            setDelivered("delivered" in payload && payload.delivered === true);
           }
         });
       }}
     >
-      <Input
-        aria-label="Invite email"
-        onChange={(event) => setEmail(event.target.value)}
-        placeholder="colleague@company.com"
-        type="email"
-        value={email}
-      />
-      <select
-        aria-label="Role"
-        className="h-9 rounded-md border bg-background px-3 text-sm"
-        onChange={(event) =>
-          setRole(event.target.value as "operator" | "author" | "org_admin")
-        }
-        value={role}
-      >
-        <option value="operator">Operator</option>
-        <option value="author">Author</option>
-        <option value="org_admin">Org admin</option>
-      </select>
+      <label className="flex flex-col gap-1 text-sm">
+        Email
+        <Input
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="colleague@company.com"
+          type="email"
+          value={email}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Role
+        <select
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+          onChange={(event) =>
+            setRole(event.target.value as "operator" | "author" | "org_admin")
+          }
+          value={role}
+        >
+          <option value="operator">Operator — fill and generate</option>
+          <option value="author">Author — design and publish</option>
+          <option value="org_admin">Admin — invites and branding</option>
+        </select>
+      </label>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {acceptUrl ? (
         <p className="text-sm">

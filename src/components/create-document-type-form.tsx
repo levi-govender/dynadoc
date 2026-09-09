@@ -53,22 +53,29 @@ export function CreateDocumentTypeForm() {
   }
 
   return (
-    <form className="flex max-w-lg flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
-      <Input
-        aria-label="Document type name"
-        onChange={(event) => setName(event.target.value)}
-        placeholder="Employment contract"
-        value={name}
-      />
-      <Input
-        aria-label="Slug"
-        onChange={(event) => {
-          setSlugTouched(true);
-          setSlug(event.target.value);
-        }}
-        placeholder="employment-contract"
-        value={slugValue}
-      />
+    <form
+      className="flex flex-col gap-3"
+      onSubmit={(event) => void onSubmit(event)}
+    >
+      <label className="flex flex-col gap-1 text-sm">
+        Name
+        <Input
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Employment contract"
+          value={name}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        URL slug
+        <Input
+          onChange={(event) => {
+            setSlugTouched(true);
+            setSlug(event.target.value);
+          }}
+          placeholder="employment-contract"
+          value={slugValue}
+        />
+      </label>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <Button disabled={pending || !name.trim() || !slugValue} type="submit">
         Create draft

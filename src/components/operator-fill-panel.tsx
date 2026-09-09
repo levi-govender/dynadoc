@@ -174,7 +174,10 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
           });
         }}
       >
-        <h2 className="mb-4 text-sm font-medium">Answers</h2>
+        <h2 className="mb-1 text-sm font-medium">Answers</h2>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Required fields must be filled before you can generate.
+        </p>
         {preview.error ? (
           <p className="text-sm text-destructive">{preview.error.message}</p>
         ) : null}
@@ -187,9 +190,15 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
                   ? (stripped[group.id] as Array<Record<string, unknown>>)
                   : []
                 ).map((row, index) => (
-                  <div className="flex flex-col gap-3 rounded-md border p-3" key={index}>
+                  <div
+                    className="flex flex-col gap-3 rounded-md border p-3"
+                    key={index}
+                  >
                     {group.fields.map((field) => (
-                      <label className="flex flex-col gap-1 text-sm" key={field.id}>
+                      <label
+                        className="flex flex-col gap-1 text-sm"
+                        key={field.id}
+                      >
                         <span>
                           {field.label}
                           {field.required ? (
@@ -266,11 +275,11 @@ export function OperatorFillPanel({ documentTypeId, snapshot }: Props) {
         ))}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <p className="text-xs text-muted-foreground">
-          Generate always inserts a new instance. It does not rewrite a PDF
-          you already issued.
+          Generate always inserts a new instance. It does not rewrite a PDF you
+          already issued.
         </p>
         <Button disabled={pending || !canGenerate} type="submit">
-          Generate new PDF
+          Generate document
         </Button>
       </form>
       <StudioPrintPreview resolved={resolved} snapshot={snapshot} />

@@ -1,7 +1,9 @@
 import { AcceptInvitePanel } from "@/components/accept-invite-panel";
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
+import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { InviteNotFoundError, getInviteByToken } from "@/lib/auth/invites";
+import { formatRole } from "@/lib/auth/roles";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
@@ -25,9 +27,11 @@ export default async function InvitePage({
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-6 p-8">
-      <AppNav />
-      <h1 className="text-xl font-semibold">Organization invite</h1>
+    <AppChrome>
+      <PageHeader
+        description={`Join ${invite.organizationName} as ${formatRole(invite.invite.role)}.`}
+        title="You are invited"
+      />
       <AcceptInvitePanel
         invitedEmail={invite.invite.email}
         organizationName={invite.organizationName}
@@ -35,6 +39,6 @@ export default async function InvitePage({
         signedInEmail={session?.user.email}
         token={token}
       />
-    </div>
+    </AppChrome>
   );
 }

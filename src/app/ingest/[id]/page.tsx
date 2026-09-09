@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -35,10 +35,11 @@ export default async function IngestJobPage({
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Ingest is only available to authors and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Ingest is only available to authors and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -58,9 +59,10 @@ export default async function IngestJobPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Ingest job</h1>
+    <AppChrome email={session.user.email} role={membership.role}>
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">
+        Ingest job
+      </h1>
       <p className="text-sm">
         Category: <strong>{loaded.category}</strong>
         {" · "}
@@ -105,39 +107,42 @@ export default async function IngestJobPage({
             rationale?: string;
           } | null;
           return (
-          <li className="rounded-md border p-3" key={file.id}>
-            <p className="font-medium">{file.filename}</p>
-            {file.error ? (
-              <p className="text-destructive">{file.error}</p>
-            ) : (
-              <p className="text-muted-foreground">
-                Text extracted
-                {file.extractedText
-                  ? ` (${file.extractedText.trim().length} characters)`
-                  : ""}
-              </p>
-            )}
-            {classification ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {classification.documentType} · {classification.category} ·
-                confidence {Math.round((classification.confidence ?? 0) * 100)}%
-                {classification.holdout ? " · holdout" : ""}
-                {classification.inFamily ? " · in-family" : " · not in-family"}
-                {classification.clusterEligible
-                  ? " · cluster-eligible"
-                  : " · not for clustering"}
-                {classification.gateReason
-                  ? ` · gate ${classification.gateReason}`
-                  : ""}
-                {classification.rationale
-                  ? ` — ${classification.rationale}`
-                  : ""}
-              </p>
-            ) : null}
-          </li>
+            <li className="rounded-md border p-3" key={file.id}>
+              <p className="font-medium">{file.filename}</p>
+              {file.error ? (
+                <p className="text-destructive">{file.error}</p>
+              ) : (
+                <p className="text-muted-foreground">
+                  Text extracted
+                  {file.extractedText
+                    ? ` (${file.extractedText.trim().length} characters)`
+                    : ""}
+                </p>
+              )}
+              {classification ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {classification.documentType} · {classification.category} ·
+                  confidence{" "}
+                  {Math.round((classification.confidence ?? 0) * 100)}%
+                  {classification.holdout ? " · holdout" : ""}
+                  {classification.inFamily
+                    ? " · in-family"
+                    : " · not in-family"}
+                  {classification.clusterEligible
+                    ? " · cluster-eligible"
+                    : " · not for clustering"}
+                  {classification.gateReason
+                    ? ` · gate ${classification.gateReason}`
+                    : ""}
+                  {classification.rationale
+                    ? ` — ${classification.rationale}`
+                    : ""}
+                </p>
+              ) : null}
+            </li>
           );
         })}
       </ul>
-    </div>
+    </AppChrome>
   );
 }

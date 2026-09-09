@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
@@ -36,10 +36,11 @@ export default async function StudioDraftPage({
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Author Studio is only available to authors and org admins.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Author Studio is only available to authors and org admins.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -65,11 +66,12 @@ export default async function StudioDraftPage({
       : parseDocumentTypeVersionSnapshot(type.draftSnapshot);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b bg-background px-4 py-3">
-        <AppNav role={membership.role} />
-        <span className="text-muted-foreground">/</span>
-        <Link className="text-sm text-muted-foreground hover:underline" href="/studio">
+    <AppChrome email={session.user.email} flush role={membership.role}>
+      <header className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-3">
+        <Link
+          className="text-sm text-muted-foreground hover:underline"
+          href="/studio"
+        >
           Types
         </Link>
         <h1 className="text-base font-semibold">{type.name}</h1>
@@ -77,14 +79,14 @@ export default async function StudioDraftPage({
           {type.slug} · {type.status}
         </p>
         <a
-          className="ml-auto text-sm underline"
+          className="ml-auto text-sm font-medium text-primary hover:underline"
           href={`/api/document-types/${type.id}/export?source=draft`}
         >
           Export draft JSON
         </a>
         {type.publishedVersionId ? (
           <a
-            className="text-sm underline"
+            className="text-sm font-medium text-primary hover:underline"
             href={`/api/document-types/${type.id}/export?source=published`}
           >
             Export published JSON
@@ -92,10 +94,7 @@ export default async function StudioDraftPage({
         ) : null}
         <StudioLogoUpload documentTypeId={type.id} />
       </header>
-      <StudioDraftEditor
-        documentTypeId={type.id}
-        initialSnapshot={snapshot}
-      />
-    </div>
+      <StudioDraftEditor documentTypeId={type.id} initialSnapshot={snapshot} />
+    </AppChrome>
   );
 }

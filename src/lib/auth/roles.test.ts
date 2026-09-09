@@ -10,12 +10,11 @@ import {
   canEditDraft,
   canGenerateInstance,
   canManageOrganization,
+  formatRole,
 } from "./roles";
 
 test("assertRole allows listed roles and rejects others", () => {
-  assert.doesNotThrow(() =>
-    assertRole({ role: "author" }, DRAFT_EDITOR_ROLES),
-  );
+  assert.doesNotThrow(() => assertRole({ role: "author" }, DRAFT_EDITOR_ROLES));
   assert.doesNotThrow(() =>
     assertRole({ role: "org_admin" }, DRAFT_EDITOR_ROLES),
   );
@@ -38,9 +37,7 @@ test("operator cannot generate from draft; authors can", () => {
     () => assertRole({ role: "operator" }, DRAFT_EDITOR_ROLES),
     RoleForbiddenError,
   );
-  assert.doesNotThrow(() =>
-    assertRole({ role: "author" }, DRAFT_EDITOR_ROLES),
-  );
+  assert.doesNotThrow(() => assertRole({ role: "author" }, DRAFT_EDITOR_ROLES));
 });
 
 test("operator can generate instances of published types", () => {
@@ -74,6 +71,12 @@ test("operator hitting a draft route maps to HTTP 403", () => {
     const response = toAuthzResponse(error);
     assert.equal(response?.status, 403);
   }
+});
+
+test("formatRole uses product language for org_admin", () => {
+  assert.equal(formatRole("org_admin"), "Admin");
+  assert.equal(formatRole("author"), "Author");
+  assert.equal(formatRole("operator"), "Operator");
 });
 
 test("guessing another org instance UUID maps to HTTP 404", () => {

@@ -1,11 +1,20 @@
-import { AppNav } from "@/components/app-nav";
+import { AppChrome } from "@/components/app-nav";
 import { InviteMemberForm } from "@/components/invite-member-form";
+import { EmptyState, PageHeader } from "@/components/page-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { requireUserMembership } from "@/lib/auth/organizations";
 import {
   ORG_ADMIN_ROLES,
   RoleForbiddenError,
   assertRole,
+  formatRole,
 } from "@/lib/auth/roles";
 import {
   listOrganizationInvites,
@@ -27,10 +36,11 @@ export default async function OrgMembersPage() {
   } catch (error) {
     if (error instanceof RoleForbiddenError) {
       return (
-        <div className="flex flex-1 flex-col gap-4 p-8">
-          <AppNav role={membership.role} />
-          <p>Only org admins can invite people.</p>
-        </div>
+        <AppChrome email={session.user.email} role={membership.role}>
+          <p className="text-sm text-muted-foreground">
+            Only admins can invite people.
+          </p>
+        </AppChrome>
       );
     }
     throw error;
@@ -42,19 +52,34 @@ export default async function OrgMembersPage() {
   ]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-8">
-      <AppNav role={membership.role} />
-      <h1 className="text-xl font-semibold">Organization</h1>
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">Invite by email</h2>
-        <InviteMemberForm />
-      </section>
+    <AppChrome email={session.user.email} role={membership.role}>
+      <PageHeader
+        description="Admins invite authors and operators. Operators cannot invite."
+        title="Organization"
+      />
+      <Card>
+        <CardHeader>
+          <CardTitle>Invite by email</CardTitle>
+          <CardDescription>
+            The invitee signs in with the same email, then joins this workspace.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InviteMemberForm />
+        </CardContent>
+      </Card>
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Members</h2>
-        <ul className="flex max-w-lg flex-col gap-1 text-sm">
+        <ul className="divide-y rounded-md border bg-card">
           {members.map((member) => (
-            <li key={member.membershipId}>
-              {member.email} ({member.role})
+            <li
+              className="flex items-center justify-between px-4 py-3 text-sm"
+              key={member.membershipId}
+            >
+              <span>{member.email}</span>
+              <span className="text-muted-foreground">
+                {formatRole(member.role)}
+              </span>
             </li>
           ))}
         </ul>
@@ -62,17 +87,26 @@ export default async function OrgMembersPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-medium">Pending invites</h2>
         {invites.length === 0 ? (
-          <p className="text-sm text-muted-foreground">None</p>
+          <EmptyState
+            description="Invites expire; send a new one if someone cannot join."
+            title="No pending invites"
+          />
         ) : (
-          <ul className="flex max-w-lg flex-col gap-1 text-sm">
+          <ul className="divide-y rounded-md border bg-card">
             {invites.map((invite) => (
-              <li key={invite.id}>
-                {invite.email} ({invite.role})
+              <li
+                className="flex items-center justify-between px-4 py-3 text-sm"
+                key={invite.id}
+              >
+                <span>{invite.email}</span>
+                <span className="text-muted-foreground">
+                  {formatRole(invite.role)}
+                </span>
               </li>
             ))}
           </ul>
         )}
       </section>
-    </div>
+    </AppChrome>
   );
 }
