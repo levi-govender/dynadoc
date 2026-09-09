@@ -18,24 +18,24 @@ Prefer **Make** over raw npm as the app grows (`make help` lists targets). npm s
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `make install` | `npm install` |
-| `make dev` | Dev server |
-| `make build` | Production build |
-| `make start` | Serve the production build |
-| `make lint` | ESLint |
-| `make format` | Prettier write |
-| `make test` | Unit tests (RLS integration tests skip if Postgres is down) |
-| `make check` | Lint + tests + production build |
-| `make health` | `GET /api/health` (server already running) |
-| `make db-up` | Start local Postgres 16 and MinIO (Docker) |
-| `make db-down` | Stop local Docker services |
-| `make db-generate` | Generate a Drizzle migration from `schema.ts` |
-| `make db-migrate` | Apply migrations |
-| `make db-studio` | Open Drizzle Studio |
-| `make db-smoke` | `SELECT` from `health_checks` |
-| `make storage-smoke` | Upload a PNG to MinIO and download it via a signed URL |
+| Command               | What it does                                                  |
+| --------------------- | ------------------------------------------------------------- |
+| `make install`        | `npm install`                                                 |
+| `make dev`            | Dev server                                                    |
+| `make build`          | Production build                                              |
+| `make start`          | Serve the production build                                    |
+| `make lint`           | ESLint                                                        |
+| `make format`         | Prettier write                                                |
+| `make test`           | Unit tests (RLS integration tests skip if Postgres is down)   |
+| `make check`          | Lint + tests + production build                               |
+| `make health`         | `GET /api/health` (server already running)                    |
+| `make db-up`          | Start local Postgres 16 and MinIO (Docker)                    |
+| `make db-down`        | Stop local Docker services                                    |
+| `make db-generate`    | Generate a Drizzle migration from `schema.ts`                 |
+| `make db-migrate`     | Apply migrations                                              |
+| `make db-studio`      | Open Drizzle Studio                                           |
+| `make db-smoke`       | `SELECT` from `health_checks`                                 |
+| `make storage-smoke`  | Upload a PNG to MinIO and download it via a signed URL        |
 
 Create `.env.local` locally with those values. Never commit `.env` files, including examples. Do not use `drizzle-kit push` in production; generate + migrate only.
 
