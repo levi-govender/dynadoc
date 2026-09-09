@@ -62,7 +62,8 @@ export default async function FillTypePage({
         <AppNav role={membership.role} />
         <h1 className="text-xl font-semibold">{published.type.name}</h1>
         <p className="text-sm text-muted-foreground">
-          Published version only. Hidden groups unmount and are not submitted.
+          Published version only. Each generate creates a new instance and a
+          new PDF. Issued files are never overwritten.
         </p>
       </div>
       <OperatorFillPanel

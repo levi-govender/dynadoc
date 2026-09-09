@@ -5,6 +5,20 @@ import { renderDocumentPdf } from "@/lib/pdf/render";
 import type { ResolveResult } from "@/lib/resolver/resolve";
 import type { DocumentTypeVersionSnapshot } from "@/types/document-type";
 
+export function issuedPdfObjectKey(args: {
+  organizationId: string;
+  documentTypeId: string;
+  instanceId: string;
+}) {
+  return buildObjectKey(
+    args.organizationId,
+    args.documentTypeId,
+    "instances",
+    args.instanceId,
+    "issued.pdf",
+  );
+}
+
 export function issuedPdfFilename(slug: string, at: Date) {
   const stamp = at.toISOString().replace(/[-:]/g, "").slice(0, 15);
   return `${slug}-${stamp}.pdf`;
@@ -31,13 +45,11 @@ export async function issueInstancePdf(args: {
   const filename = issuedPdfFilename(args.documentTypeSlug, new Date());
   let objectKey: string | null = null;
   try {
-    const key = buildObjectKey(
-      args.organizationId,
-      args.documentTypeId,
-      "instances",
-      args.instanceId,
-      "issued.pdf",
-    );
+    const key = issuedPdfObjectKey({
+      organizationId: args.organizationId,
+      documentTypeId: args.documentTypeId,
+      instanceId: args.instanceId,
+    });
     await putObject({
       key,
       body: bytes,
