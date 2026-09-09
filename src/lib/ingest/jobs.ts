@@ -26,6 +26,7 @@ import {
   type IngestRereviewAction,
 } from "@/lib/ingest/rereview";
 import {
+  eligibleClusterFiles,
   mergeIngestClusters,
   proposeIngestClusters,
   splitIngestCluster,
@@ -33,6 +34,16 @@ import {
 } from "@/lib/ingest/cluster";
 import { applyIngestReview } from "@/lib/ingest/review";
 import { importFromJson } from "@/lib/document-types/import";
+import {
+  getDocumentType,
+  saveDraft,
+} from "@/lib/document-types/versions";
+import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
+import {
+  applyStyleThemeToDraft,
+  extractLayoutHints,
+  proposeStyleTheme,
+} from "@/lib/ingest/style-theme";
 import { markNotificationRead, notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
@@ -599,6 +610,72 @@ export async function saveIngestJobDrafts(args: {
       );
   });
   return getIngestJob(args);
+}
+
+export function ingestStyleThemeProposal(loaded: {
+  files: Array<{
+    id: string;
+    filename: string;
+    extractedText: string | null;
+    classification: unknown;
+  }>;
+}) {
+  const eligible = eligibleClusterFiles(
+    loaded.files.map((file) => ({
+      id: file.id,
+      filename: file.filename,
+      extractedText: file.extractedText,
+      classification: (file.classification ?? null) as IngestClassification | null,
+    })),
+  );
+  const texts = eligible
+    .map((file) => file.extractedText ?? "")
+    .filter((text) => text.trim().length > 0);
+  const hints = extractLayoutHints(texts);
+  return {
+    hints,
+    proposal: proposeStyleTheme(hints),
+    sampleCount: texts.length,
+  };
+}
+
+export async function acceptIngestStyleTheme(args: {
+  organizationId: string;
+  jobId: string;
+  documentTypeId: string;
+}) {
+  const loaded = await getIngestJob(args);
+  const allowed = loaded.savedDrafts?.types.some(
+    (type) => type.id === args.documentTypeId,
+  );
+  if (!allowed) {
+    throw new IngestUploadError(
+      "Accept a style theme only on draft types saved from this job",
+    );
+  }
+  const type = await getDocumentType({
+    organizationId: args.organizationId,
+    documentTypeId: args.documentTypeId,
+  });
+  if (type.draftSnapshot == null) {
+    throw new IngestUploadError("Document type has no draft snapshot");
+  }
+  const current = parseDocumentTypeVersionSnapshot(type.draftSnapshot);
+  const { proposal } = ingestStyleThemeProposal(loaded);
+  const snapshot = applyStyleThemeToDraft(current, proposal);
+  const saved = await saveDraft({
+    organizationId: args.organizationId,
+    documentTypeId: args.documentTypeId,
+    snapshot,
+  });
+  return {
+    documentTypeId: saved.type.id,
+    status: saved.type.status,
+    publishedVersionId: saved.type.publishedVersionId,
+    styleTheme: saved.snapshot.styleTheme,
+    formSchema: saved.snapshot.formSchema,
+    template: saved.snapshot.template,
+  };
 }
 
 export async function listIngestJobs(args: { organizationId: string }) {
