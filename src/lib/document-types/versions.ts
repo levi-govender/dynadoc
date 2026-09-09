@@ -10,10 +10,16 @@ import {
   parseDocumentTypeVersionSnapshot,
   type DocumentTypeVersionSnapshot,
 } from "@/types/document-type";
-import { GroupActivationCycleError, resolveDocument } from "@/lib/resolver/resolve";
+import {
+  GroupActivationCycleError,
+  resolveDocument,
+} from "@/lib/resolver/resolve";
 import { parseOperatorAnswers } from "@/lib/document-types/answers-schema";
 import { DocumentTypeSlugTakenError } from "@/lib/document-types/create";
-import { InstanceNotFoundError } from "@/lib/document-types/instances";
+import {
+  EsignEnvelopeExistsError,
+  InstanceNotFoundError,
+} from "@/lib/document-types/instances";
 
 export class DocumentTypeNotFoundError extends Error {
   constructor(message = "Document type not found") {
@@ -332,6 +338,7 @@ export function isDocumentTypeClientError(error: unknown) {
     error instanceof GroupActivationCycleError ||
     error instanceof DocumentTypeSlugTakenError ||
     error instanceof InstanceNotFoundError ||
+    error instanceof EsignEnvelopeExistsError ||
     error instanceof ZodError
   );
 }
@@ -342,6 +349,9 @@ export function documentTypeErrorStatus(error: unknown): number {
   }
   if (error instanceof InstanceNotFoundError) {
     return 404;
+  }
+  if (error instanceof EsignEnvelopeExistsError) {
+    return 409;
   }
   if (error instanceof PublishedVersionImmutableError) {
     return 409;

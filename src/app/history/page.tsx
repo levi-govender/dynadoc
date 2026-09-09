@@ -1,3 +1,4 @@
+import { InstanceEsignCell } from "@/components/instance-esign-cell";
 import { AppNav } from "@/components/app-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import {
   listInstances,
   parseInstanceListQuery,
 } from "@/lib/document-types/instances";
+import { slotsForTheme } from "@/lib/esign/send";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -36,7 +38,9 @@ export default async function InstanceHistoryPage({
       return (
         <div className="flex flex-1 flex-col gap-4 p-8">
           <AppNav role={membership.role} />
-          <p>History is only available to operators, authors, and org admins.</p>
+          <p>
+            History is only available to operators, authors, and org admins.
+          </p>
         </div>
       );
     }
@@ -83,9 +87,11 @@ export default async function InstanceHistoryPage({
         <Button type="submit">Filter</Button>
       </form>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No generated documents yet.</p>
+        <p className="text-sm text-muted-foreground">
+          No generated documents yet.
+        </p>
       ) : (
-        <table className="max-w-4xl text-left text-sm">
+        <table className="max-w-6xl text-left text-sm">
           <thead>
             <tr className="border-b">
               <th className="py-2 pr-4">Type</th>
@@ -94,6 +100,7 @@ export default async function InstanceHistoryPage({
               <th className="py-2 pr-4">Who</th>
               <th className="py-2">PDF</th>
               <th className="py-2">Word</th>
+              <th className="py-2">E-sign</th>
             </tr>
           </thead>
           <tbody>
@@ -101,24 +108,53 @@ export default async function InstanceHistoryPage({
               <tr className="border-b" key={row.id}>
                 <td className="py-2 pr-4">
                   {row.typeName}{" "}
-                  <span className="text-muted-foreground">({row.typeSlug})</span>
+                  <span className="text-muted-foreground">
+                    ({row.typeSlug})
+                  </span>
                 </td>
                 <td className="py-2 pr-4">v{row.versionNumber}</td>
                 <td className="py-2 pr-4">
-                  {row.createdAt.toISOString().replace("T", " ").slice(0, 16)} UTC
+                  {row.createdAt.toISOString().replace("T", " ").slice(0, 16)}{" "}
+                  UTC
                 </td>
                 <td className="py-2 pr-4">
                   {row.createdByName ?? row.createdByEmail ?? "Unknown"}
                 </td>
                 <td className="py-2 pr-4">
-                  <Link className="underline" href={`/api/instances/${row.id}/pdf`}>
+                  <Link
+                    className="underline"
+                    href={`/api/instances/${row.id}/pdf`}
+                  >
                     PDF
                   </Link>
                 </td>
-                <td className="py-2">
-                  <Link className="underline" href={`/api/instances/${row.id}/docx`}>
+                <td className="py-2 pr-4">
+                  <Link
+                    className="underline"
+                    href={`/api/instances/${row.id}/docx`}
+                  >
                     Word
                   </Link>
+                </td>
+                <td className="py-2">
+                  <InstanceEsignCell
+                    envelopeId={row.esignEnvelopeId}
+                    instanceId={row.id}
+                    slots={(() => {
+                      try {
+                        return slotsForTheme(row.styleTheme, {}).map(
+                          (slot) => ({
+                            id: slot.id,
+                            partyLabel: slot.partyLabel,
+                            kind: slot.kind,
+                          }),
+                        );
+                      } catch {
+                        return [];
+                      }
+                    })()}
+                    status={row.esignStatus}
+                  />
                 </td>
               </tr>
             ))}

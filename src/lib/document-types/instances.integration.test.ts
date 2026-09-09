@@ -4,18 +4,16 @@ import { eq } from "drizzle-orm";
 import { config } from "dotenv";
 import test from "node:test";
 import { closeDb, getDb } from "@/lib/db";
-import {
-  documentTypes,
-  instances,
-  organizations,
-  user,
-} from "@/lib/db/schema";
+import { documentTypes, instances, organizations, user } from "@/lib/db/schema";
 import { withOrganization } from "@/lib/db/tenant";
 import {
   attachIssuedPdfKey,
   getInstance,
   listInstances,
   InstanceNotFoundError,
+  attachEsignEnvelope,
+  setEsignStatus,
+  EsignEnvelopeExistsError,
 } from "@/lib/document-types/instances";
 import { issuedPdfObjectKey } from "@/lib/pdf/issue";
 import {
@@ -168,6 +166,41 @@ test("draft edits after issue do not change the stored resolved AST", async (t) 
     );
     assert.equal(issued?.issuedPdfKey, "s3://first.pdf");
     assert.equal(JSON.stringify(issued?.resolvedAst), frozen);
+
+    const envelope = await attachEsignEnvelope({
+      organizationId: org.id,
+      instanceId: generated.instance.id,
+      envelopeId: "env-keep-pdf",
+      status: "sent",
+      provider: "dropbox_sign",
+    });
+    assert.equal(envelope.issuedPdfKey, "s3://first.pdf");
+    await setEsignStatus({
+      organizationId: org.id,
+      instanceId: generated.instance.id,
+      envelopeId: "env-keep-pdf",
+      status: "completed",
+    });
+    const [afterEsign] = await withOrganization(org.id, async (scoped) =>
+      scoped
+        .select()
+        .from(instances)
+        .where(eq(instances.id, generated.instance.id)),
+    );
+    assert.equal(afterEsign?.issuedPdfKey, "s3://first.pdf");
+    assert.equal(afterEsign?.esignStatus, "completed");
+    assert.equal(JSON.stringify(afterEsign?.resolvedAst), frozen);
+    await assert.rejects(
+      () =>
+        attachEsignEnvelope({
+          organizationId: org.id,
+          instanceId: generated.instance.id,
+          envelopeId: "env-other",
+          status: "sent",
+          provider: "dropbox_sign",
+        }),
+      EsignEnvelopeExistsError,
+    );
   } catch (error) {
     if (error instanceof assert.AssertionError) {
       throw error;

@@ -9,14 +9,12 @@ import {
   InviteNotFoundError,
 } from "@/lib/auth/invites";
 import { OperatorAnswersError } from "@/lib/document-types/answers-schema";
+import { EsignError } from "@/lib/esign/errors";
 import {
   InvalidNotificationTypeError,
   NotificationNotFoundError,
 } from "@/lib/notifications";
-import {
-  IngestJobNotFoundError,
-  IngestUploadError,
-} from "@/lib/ingest/jobs";
+import { IngestJobNotFoundError, IngestUploadError } from "@/lib/ingest/jobs";
 import { IngestClusterError } from "@/lib/ingest/cluster";
 import { IngestRereviewError } from "@/lib/ingest/rereview";
 import { InvalidIngestMetaError } from "@/lib/ingest/extract";
@@ -63,6 +61,12 @@ export function toAuthzResponse(error: unknown) {
   }
   if (error instanceof ZodError) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+  if (error instanceof EsignError) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.httpStatus },
+    );
   }
   if (error instanceof OperatorAnswersError) {
     return NextResponse.json(
