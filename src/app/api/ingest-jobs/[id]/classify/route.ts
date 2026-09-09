@@ -21,6 +21,7 @@ export async function POST(
     const loaded = await classifyIngestJob({
       organizationId: membership.organizationId,
       jobId: id,
+      userId: session.user.id,
     });
     return NextResponse.json(serializeIngestJob(loaded));
   } catch (error) {

@@ -103,6 +103,8 @@ test("uploaded job lists files, category, and unsupported errors; stays uploaded
     assert.equal(labels?.documentType, "invoice");
     assert.equal(labels?.inFamily, false);
     assert.equal(labels?.holdout, true);
+    assert.equal(labels?.clusterEligible, false);
+    assert.equal(classified.gatesApplied, true);
   } catch (error) {
     if (error instanceof assert.AssertionError) {
       throw error;

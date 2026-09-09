@@ -61,6 +61,12 @@ export default async function IngestJobPage({
         Mode: <strong>{loaded.mode}</strong>
         {" · "}
         Status: <strong>{loaded.job.status}</strong>
+        {loaded.gatesApplied ? " · gates applied" : ""}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Held-out files skip clause clustering. Merge or split remaining files
+        only after gates pass on the cluster-eligible set. Inbox lists holdout
+        notifications.
       </p>
       {loaded.job.status === INGEST_JOB_UPLOADED ? (
         <IngestClassifyButton jobId={loaded.job.id} />
@@ -73,6 +79,8 @@ export default async function IngestJobPage({
             confidence?: number;
             holdout?: boolean;
             inFamily?: boolean;
+            clusterEligible?: boolean;
+            gateReason?: string;
             rationale?: string;
           } | null;
           return (
@@ -94,6 +102,12 @@ export default async function IngestJobPage({
                 confidence {Math.round((classification.confidence ?? 0) * 100)}%
                 {classification.holdout ? " · holdout" : ""}
                 {classification.inFamily ? " · in-family" : " · not in-family"}
+                {classification.clusterEligible
+                  ? " · cluster-eligible"
+                  : " · not for clustering"}
+                {classification.gateReason
+                  ? ` · gate ${classification.gateReason}`
+                  : ""}
                 {classification.rationale
                   ? ` — ${classification.rationale}`
                   : ""}
