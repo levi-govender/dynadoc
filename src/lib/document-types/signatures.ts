@@ -14,7 +14,10 @@ export type ResolvedSignatureSlot = {
   imageSrc: string | null;
 };
 
-function answerText(answers: Answers, field: string | undefined): string | null {
+function answerText(
+  answers: Answers,
+  field: string | undefined,
+): string | null {
   if (!field) {
     return null;
   }
@@ -26,6 +29,14 @@ function answerText(answers: Answers, field: string | undefined): string | null 
     return String(value);
   }
   return null;
+}
+
+export function signatureImageFieldIds(theme: StyleTheme) {
+  return new Set(
+    theme.signatures.blocks.flatMap((slot) =>
+      slot.imageField ? [slot.imageField] : [],
+    ),
+  );
 }
 
 export function signatureImageSrc(slot: SignatureSlot, answers: Answers) {

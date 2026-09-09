@@ -63,7 +63,7 @@ export function IngestClusterPanel({
           onClick={() => run(`/api/ingest-jobs/${jobId}/cluster`)}
           type="button"
         >
-          {pending ? "Clustering…" : "Cluster eligible files"}
+          {pending ? "Grouping…" : "Group matching files"}
         </Button>
       ) : null}
       {clusterState ? (

@@ -62,8 +62,7 @@ export default async function FillTypePage({
       <div className="flex flex-col gap-1 border-b bg-card px-6 py-4">
         <h1 className="text-xl font-semibold">{published.type.name}</h1>
         <p className="text-sm text-muted-foreground">
-          Published version only. Each generate creates a new instance and a new
-          PDF. Issued files are never overwritten.
+          Published type only. Generate creates a new file; earlier files stay.
         </p>
       </div>
       <OperatorFillPanel documentTypeId={id} snapshot={published.snapshot} />

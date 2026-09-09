@@ -23,7 +23,7 @@ export default async function InboxPage() {
   return (
     <AppChrome email={session.user.email} role={membership.role}>
       <PageHeader
-        description="Holdout ingest files need an explicit action. Nothing is merged silently."
+        description="Files that need a decision show up here. Nothing is merged quietly."
         title="Inbox"
       />
       <InboxList initialItems={rows.map(serializeNotification)} />

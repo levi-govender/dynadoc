@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { ActivationOverlapWarning } from "@/lib/document-types/branching";
 import {
   FIELD_TYPES,
+  FIELD_TYPE_LABELS,
   addField,
   addGroup,
   addSelectOption,
@@ -32,6 +33,9 @@ type Props = {
   overlapWarnings: ActivationOverlapWarning[];
   status: "idle" | "saving" | "saved" | "error";
   error: string | null;
+  simple?: boolean;
+  canUndo?: boolean;
+  onUndo?: () => void;
 };
 
 export function StudioControlPanel({
@@ -42,31 +46,53 @@ export function StudioControlPanel({
   overlapWarnings,
   status,
   error,
+  simple = false,
+  canUndo = false,
+  onUndo,
 }: Props) {
   return (
     <section className="flex min-h-0 flex-col overflow-y-auto border-b bg-background xl:border-r xl:border-b-0">
       <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b bg-background px-4 py-3">
-        <h2 className="text-sm font-medium">Fields</h2>
-        <p className="text-xs text-muted-foreground">
-          {status === "saving"
-            ? "Saving…"
-            : status === "saved"
-              ? "Saved"
-              : status === "error"
-                ? "Save failed"
-                : "Autosave"}
-        </p>
+        <h2 className="text-sm font-medium">
+          {simple ? "Questions" : "Fields"}
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button
+            disabled={!canUndo}
+            onClick={onUndo}
+            size="xs"
+            type="button"
+            variant="outline"
+          >
+            Undo
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {status === "saving"
+              ? "Saving…"
+              : status === "saved"
+                ? "Saved"
+                : status === "error"
+                  ? "Save failed"
+                  : "Autosave"}
+          </p>
+        </div>
       </div>
       <div className="flex flex-col gap-4 p-4">
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {overlapWarnings.map((warning) => (
-          <p className="text-sm text-destructive" key={`${warning.fieldId}-${warning.optionA}`}>
-            Options “{warning.optionA}” and “{warning.optionB}” on {warning.fieldLabel}{" "}
-            both activate {warning.groupIds.join(", ")}.
+          <p
+            className="text-sm text-destructive"
+            key={`${warning.fieldId}-${warning.optionA}`}
+          >
+            Options “{warning.optionA}” and “{warning.optionB}” on{" "}
+            {warning.fieldLabel} both activate {warning.groupIds.join(", ")}.
           </p>
         ))}
         {form.groups.map((group) => (
-          <div className="flex flex-col gap-3 rounded-md border p-3" key={group.id}>
+          <div
+            className="flex flex-col gap-3 rounded-md border p-3"
+            key={group.id}
+          >
             <div className="flex gap-2">
               <Input
                 aria-label="Group title"
@@ -88,7 +114,7 @@ export function StudioControlPanel({
                 type="button"
                 variant="outline"
               >
-                Delete group
+                Delete {simple ? "section" : "group"}
               </Button>
             </div>
             <label className="flex items-center gap-2 text-xs">
@@ -96,26 +122,26 @@ export function StudioControlPanel({
                 checked={group.repeatable === true}
                 onChange={(event) =>
                   patchForm((current) =>
-                    setGroupRepeatable(
-                      current,
-                      group.id,
-                      event.target.checked,
-                    ),
+                    setGroupRepeatable(current, group.id, event.target.checked),
                   )
                 }
                 type="checkbox"
               />
-              Repeatable (schedule items, extra parties)
+              {simple
+                ? "Operators can add more than one of these"
+                : "Repeatable (schedule items, extra parties)"}
             </label>
-            <VisibleWhenEditor
-              form={form}
-              onChange={(expr) =>
-                patchForm((current) =>
-                  setGroupVisibleWhen(current, group.id, expr),
-                )
-              }
-              value={group.visibleWhen}
-            />
+            {simple ? null : (
+              <VisibleWhenEditor
+                form={form}
+                onChange={(expr) =>
+                  patchForm((current) =>
+                    setGroupVisibleWhen(current, group.id, expr),
+                  )
+                }
+                value={group.visibleWhen}
+              />
+            )}
             {group.fields.map((field, fieldIndex) => (
               <FieldEditor
                 canMoveDown={fieldIndex < group.fields.length - 1}
@@ -127,6 +153,7 @@ export function StudioControlPanel({
                 onChange={patchForm}
                 onSelect={() => onSelectField(field.id)}
                 selected={selectedFieldId === field.id}
+                simple={simple}
               />
             ))}
             <div className="flex flex-wrap gap-1">
@@ -140,7 +167,7 @@ export function StudioControlPanel({
                   type="button"
                   variant="outline"
                 >
-                  {type}
+                  {FIELD_TYPE_LABELS[type]}
                 </Button>
               ))}
             </div>
@@ -151,7 +178,7 @@ export function StudioControlPanel({
           type="button"
           variant="secondary"
         >
-          Add group
+          Add {simple ? "section" : "group"}
         </Button>
       </div>
     </section>
@@ -167,6 +194,7 @@ function FieldEditor({
   selected,
   canMoveUp,
   canMoveDown,
+  simple,
 }: {
   field: Field;
   form: FormSchema;
@@ -176,6 +204,7 @@ function FieldEditor({
   selected: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  simple: boolean;
 }) {
   const otherGroups = form.groups.filter((group) => group.id !== groupId);
   return (
@@ -255,41 +284,64 @@ function FieldEditor({
           type="button"
           variant={selected ? "secondary" : "ghost"}
         >
-          {selected ? "Linked" : "Link"}
+          {selected ? "Insert in document" : "Use in document"}
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">{field.type}</p>
-      <VisibleWhenEditor
-        form={form}
-        onChange={(expr) =>
-          onChange((current) =>
-            setFieldVisibleWhen(current, groupId, field.id, expr),
-          )
-        }
-        value={field.visibleWhen}
-      />
+      <p className="text-xs text-muted-foreground">
+        {FIELD_TYPE_LABELS[field.type]}
+      </p>
+      {simple ? null : (
+        <VisibleWhenEditor
+          form={form}
+          onChange={(expr) =>
+            onChange((current) =>
+              setFieldVisibleWhen(current, groupId, field.id, expr),
+            )
+          }
+          value={field.visibleWhen}
+        />
+      )}
       {field.type === "select"
         ? field.options.map((option, optionIndex) => (
-            <div className="flex flex-col gap-2" key={`${field.id}-${optionIndex}`}>
+            <div
+              className="flex flex-col gap-2"
+              key={`${field.id}-${optionIndex}`}
+            >
               <div className="flex gap-2">
-                <Input
-                  aria-label="Option value"
-                  onChange={(event) =>
-                    onChange((current) =>
-                      updateSelectOption(current, groupId, field.id, optionIndex, {
-                        value: event.target.value || `option-${optionIndex + 1}`,
-                      }),
-                    )
-                  }
-                  value={option.value}
-                />
+                {simple ? null : (
+                  <Input
+                    aria-label="Option value"
+                    onChange={(event) =>
+                      onChange((current) =>
+                        updateSelectOption(
+                          current,
+                          groupId,
+                          field.id,
+                          optionIndex,
+                          {
+                            value:
+                              event.target.value || `option-${optionIndex + 1}`,
+                          },
+                        ),
+                      )
+                    }
+                    value={option.value}
+                  />
+                )}
                 <Input
                   aria-label="Option label"
                   onChange={(event) =>
                     onChange((current) =>
-                      updateSelectOption(current, groupId, field.id, optionIndex, {
-                        label: event.target.value || `Option ${optionIndex + 1}`,
-                      }),
+                      updateSelectOption(
+                        current,
+                        groupId,
+                        field.id,
+                        optionIndex,
+                        {
+                          label:
+                            event.target.value || `Option ${optionIndex + 1}`,
+                        },
+                      ),
                     )
                   }
                   value={option.label}
@@ -297,7 +349,12 @@ function FieldEditor({
                 <Button
                   onClick={() =>
                     onChange((current) =>
-                      deleteSelectOption(current, groupId, field.id, optionIndex),
+                      deleteSelectOption(
+                        current,
+                        groupId,
+                        field.id,
+                        optionIndex,
+                      ),
                     )
                   }
                   type="button"
@@ -308,13 +365,18 @@ function FieldEditor({
               </div>
               {otherGroups.length > 0 ? (
                 <div className="flex flex-wrap gap-2 pl-1 text-xs">
-                  <span className="text-muted-foreground">Activates</span>
+                  <span className="text-muted-foreground">
+                    {simple ? "Also show" : "Activates"}
+                  </span>
                   {otherGroups.map((target) => {
                     const checked = (option.activatesGroupIds ?? []).includes(
                       target.id,
                     );
                     return (
-                      <label className="flex items-center gap-1" key={target.id}>
+                      <label
+                        className="flex items-center gap-1"
+                        key={target.id}
+                      >
                         <input
                           checked={checked}
                           onChange={(event) => {

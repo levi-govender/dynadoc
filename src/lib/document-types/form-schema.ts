@@ -1,5 +1,10 @@
 import { listBindableFields } from "@/lib/document-types/repeatable";
-import type { Expr, Field, FieldGroup, FormSchema } from "@/types/document-type";
+import type {
+  Expr,
+  Field,
+  FieldGroup,
+  FormSchema,
+} from "@/types/document-type";
 import { formSchemaSchema } from "@/types/document-type";
 
 export const FIELD_TYPES = [
@@ -12,6 +17,15 @@ export const FIELD_TYPES = [
 ] as const;
 
 export type FieldType = (typeof FIELD_TYPES)[number];
+
+export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  text: "Short text",
+  textarea: "Long text",
+  select: "Choice",
+  number: "Number",
+  date: "Date",
+  boolean: "Yes / no",
+};
 
 function newId() {
   return crypto.randomUUID();
@@ -43,13 +57,13 @@ export function createField(type: FieldType, label = "Untitled field"): Field {
   return { id, type, label };
 }
 
-export function addGroup(form: FormSchema, title = "Untitled group"): FormSchema {
+export function addGroup(
+  form: FormSchema,
+  title = "Untitled group",
+): FormSchema {
   return {
     ...form,
-    groups: [
-      ...form.groups,
-      { id: newId(), title, fields: [] },
-    ],
+    groups: [...form.groups, { id: newId(), title, fields: [] }],
   };
 }
 

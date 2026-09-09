@@ -8,7 +8,9 @@ import {
 } from "@/lib/auth/roles";
 import { IngestClassifyButton } from "@/components/ingest-classify-button";
 import { IngestClusterPanel } from "@/components/ingest-cluster-panel";
+import { IngestJobStepper } from "@/components/ingest-job-stepper";
 import { IngestStyleThemePanel } from "@/components/ingest-style-theme-panel";
+import { PageHeader } from "@/components/page-header";
 import { getIngestJob, IngestJobNotFoundError } from "@/lib/ingest/jobs";
 import {
   INGEST_JOB_CLASSIFIED,
@@ -60,21 +62,22 @@ export default async function IngestJobPage({
 
   return (
     <AppChrome email={session.user.email} role={membership.role}>
-      <h1 className="font-heading text-2xl font-semibold tracking-tight">
-        Ingest job
-      </h1>
-      <p className="text-sm">
-        Category: <strong>{loaded.category}</strong>
-        {" · "}
-        Mode: <strong>{loaded.mode}</strong>
-        {" · "}
-        Status: <strong>{loaded.job.status}</strong>
-        {loaded.gatesApplied ? " · gates applied" : ""}
-      </p>
+      <PageHeader
+        description={
+          loaded.job.status === "uploaded"
+            ? "Next: classify these files so mismatches can be set aside."
+            : loaded.job.status === "classified" && !loaded.gatesApplied
+              ? "Some files need a look in Inbox before grouping can start."
+              : loaded.job.status === "classified"
+                ? "Next: group matching files into draft types. Nothing is published yet."
+                : "Review the draft types, then open Studio to edit and publish."
+        }
+        title="Ingest job"
+      />
+      <IngestJobStepper status={loaded.job.status} />
       <p className="text-sm text-muted-foreground">
-        Held-out files skip clause clustering. Merge or split remaining files
-        only after gates pass on the cluster-eligible set. Inbox lists holdout
-        notifications.
+        {loaded.category} ·{" "}
+        {loaded.mode === "decompose" ? "family" : "single type"}
       </p>
       {loaded.job.status === INGEST_JOB_UPLOADED ? (
         <IngestClassifyButton jobId={loaded.job.id} />
@@ -124,13 +127,13 @@ export default async function IngestJobPage({
                   {classification.documentType} · {classification.category} ·
                   confidence{" "}
                   {Math.round((classification.confidence ?? 0) * 100)}%
-                  {classification.holdout ? " · holdout" : ""}
+                  {classification.holdout ? " · needs a look" : ""}
                   {classification.inFamily
-                    ? " · in-family"
-                    : " · not in-family"}
+                    ? " · matches this job"
+                    : " · does not match this job"}
                   {classification.clusterEligible
-                    ? " · cluster-eligible"
-                    : " · not for clustering"}
+                    ? " · ready to group"
+                    : " · not for grouping"}
                   {classification.gateReason
                     ? ` · gate ${classification.gateReason}`
                     : ""}

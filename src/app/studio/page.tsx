@@ -50,7 +50,7 @@ export default async function StudioPage() {
   return (
     <AppChrome email={session.user.email} role={membership.role}>
       <PageHeader
-        description="Create a draft, import JSON, or open a type to edit and publish."
+        description="Create a type, open the example, or import JSON. Publish when operators should fill it."
         title="Author Studio"
       />
       <div className="grid gap-4 md:grid-cols-2">
@@ -81,7 +81,7 @@ export default async function StudioPage() {
         <h2 className="text-sm font-medium">Types in this organization</h2>
         {types.length === 0 ? (
           <EmptyState
-            description="Create a draft above or import a JSON bundle."
+            description="Use New document type above, or open the example engagement."
             title="No document types yet"
           />
         ) : (

@@ -1,4 +1,4 @@
-import { InstanceEsignCell } from "@/components/instance-esign-cell";
+import { IssuedDocumentCard } from "@/components/issued-document-card";
 import { AppChrome } from "@/components/app-nav";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import {
   listInstances,
   parseInstanceListQuery,
 } from "@/lib/document-types/instances";
-import { slotsForTheme } from "@/lib/esign/send";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -39,7 +38,8 @@ export default async function InstanceHistoryPage({
       return (
         <AppChrome email={session.user.email} role={membership.role}>
           <p className="text-sm text-muted-foreground">
-            History is only available to operators, authors, and org admins.
+            Issued documents are only available to operators, authors, and org
+            admins.
           </p>
         </AppChrome>
       );
@@ -59,115 +59,64 @@ export default async function InstanceHistoryPage({
   return (
     <AppChrome email={session.user.email} role={membership.role} wide>
       <PageHeader
-        description="Issued files are never overwritten. Download PDF or Word, or send the PDF for e-sign."
-        title="History"
+        description="Each generate adds a new file. Download PDF or Word, or send the PDF for signature."
+        title="Issued documents"
       />
-      <form
-        className="flex flex-wrap items-end gap-3 rounded-md border bg-card p-4"
-        method="get"
-      >
-        <label className="flex flex-col gap-1 text-sm">
-          Type
-          <select
-            className="h-8 rounded-md border bg-background px-2"
-            defaultValue={query.documentTypeId ?? ""}
-            name="documentTypeId"
-          >
-            <option value="">All types</option>
-            {types.map((type) => (
-              <option key={type.id} value={type.id}>
-                {type.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          From
-          <Input defaultValue={query.from ?? ""} name="from" type="date" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          To
-          <Input defaultValue={query.to ?? ""} name="to" type="date" />
-        </label>
-        <Button type="submit">Filter</Button>
-      </form>
+      <details className="rounded-md border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-medium">Filter</summary>
+        <form className="mt-3 flex flex-wrap items-end gap-3" method="get">
+          <label className="flex flex-col gap-1">
+            Type
+            <select
+              className="h-8 rounded-md border bg-background px-2"
+              defaultValue={query.documentTypeId ?? ""}
+              name="documentTypeId"
+            >
+              <option value="">All types</option>
+              {types.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            From
+            <Input defaultValue={query.from ?? ""} name="from" type="date" />
+          </label>
+          <label className="flex flex-col gap-1">
+            To
+            <Input defaultValue={query.to ?? ""} name="to" type="date" />
+          </label>
+          <Button type="submit">Apply</Button>
+        </form>
+      </details>
       {rows.length === 0 ? (
         <EmptyState
-          description="Generate a document from Fill. Each generate adds a row here."
-          title="No generated documents yet"
+          action={
+            <Link href="/fill">
+              <Button type="button">Fill a document</Button>
+            </Link>
+          }
+          description="Fill a published type to issue a PDF and Word file."
+          title="No issued documents yet"
         />
       ) : (
-        <div className="overflow-x-auto rounded-md border bg-card">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Type</th>
-                <th className="px-4 py-2 font-medium">Version</th>
-                <th className="px-4 py-2 font-medium">When</th>
-                <th className="px-4 py-2 font-medium">Who</th>
-                <th className="px-4 py-2 font-medium">PDF</th>
-                <th className="px-4 py-2 font-medium">Word</th>
-                <th className="px-4 py-2 font-medium">E-sign</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr className="border-t" key={row.id}>
-                  <td className="px-4 py-3">
-                    {row.typeName}{" "}
-                    <span className="text-muted-foreground">
-                      ({row.typeSlug})
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">v{row.versionNumber}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {row.createdAt.toISOString().replace("T", " ").slice(0, 16)}{" "}
-                    UTC
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.createdByName ?? row.createdByEmail ?? "Unknown"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-primary hover:underline"
-                      href={`/api/instances/${row.id}/pdf`}
-                    >
-                      PDF
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-primary hover:underline"
-                      href={`/api/instances/${row.id}/docx`}
-                    >
-                      Word
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">
-                    <InstanceEsignCell
-                      envelopeId={row.esignEnvelopeId}
-                      instanceId={row.id}
-                      slots={(() => {
-                        try {
-                          return slotsForTheme(row.styleTheme, {}).map(
-                            (slot) => ({
-                              id: slot.id,
-                              partyLabel: slot.partyLabel,
-                              kind: slot.kind,
-                            }),
-                          );
-                        } catch {
-                          return [];
-                        }
-                      })()}
-                      status={row.esignStatus}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="grid gap-3 md:grid-cols-2">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <IssuedDocumentCard
+                createdAt={row.createdAt}
+                createdBy={row.createdByName ?? row.createdByEmail ?? "Unknown"}
+                envelopeId={row.esignEnvelopeId}
+                esignStatus={row.esignStatus}
+                id={row.id}
+                styleTheme={row.styleTheme}
+                typeName={row.typeName}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </AppChrome>
   );

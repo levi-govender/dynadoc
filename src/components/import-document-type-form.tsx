@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import exampleEngagement from "@/types/fixtures/complex-engagement.export.json";
 
 export function ImportDocumentTypeForm() {
   const router = useRouter();
@@ -68,10 +69,25 @@ export function ImportDocumentTypeForm() {
         });
       }}
     >
-      <input accept="application/json,.json" aria-label="Import JSON" name="file" type="file" />
+      <input
+        accept="application/json,.json"
+        aria-label="Import JSON"
+        name="file"
+        type="file"
+      />
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       <Button disabled={pending} type="submit">
         Import JSON
+      </Button>
+      <Button
+        disabled={pending}
+        onClick={() => {
+          void importPayload(exampleEngagement);
+        }}
+        type="button"
+        variant="outline"
+      >
+        Open example engagement
       </Button>
     </form>
   );

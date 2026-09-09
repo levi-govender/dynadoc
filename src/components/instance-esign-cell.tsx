@@ -19,7 +19,7 @@ export function InstanceEsignCell(props: {
   const [pending, setPending] = useState(false);
 
   if (props.slots.length === 0) {
-    return <span className="text-muted-foreground">No slots</span>;
+    return <span className="text-muted-foreground">No signature lines</span>;
   }
 
   async function post(body: unknown) {
