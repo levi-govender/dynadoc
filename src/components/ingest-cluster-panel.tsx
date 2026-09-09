@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { IngestClusterState } from "@/lib/ingest/cluster";
+import { diffAgainstEmptyDraft } from "@/lib/ingest/review";
 
 function readError(body: unknown, fallback: string) {
   return body &&
@@ -33,6 +34,7 @@ export function IngestClusterPanel({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [reviewed, setReviewed] = useState(false);
+  const [rejected, setRejected] = useState<string[]>([]);
 
   function run(path: string, body?: unknown) {
     setPending(true);
@@ -54,7 +56,7 @@ export function IngestClusterPanel({
   }
 
   return (
-    <div className="flex max-w-xl flex-col gap-3">
+    <div className="flex max-w-2xl flex-col gap-3">
       {canCluster ? (
         <Button
           disabled={pending}
@@ -129,19 +131,63 @@ export function IngestClusterPanel({
               ? ` · shared ${clusterState.sharedFields.map((field) => field.label).join(", ")}`
               : ""}
           </p>
-          <ul className="text-xs text-muted-foreground">
+          <ul className="flex flex-col gap-3 text-sm">
             {clusterState.familyDraft.members.map((member) => {
-              const maps = member.snapshot.template.blocks.flatMap((block) =>
-                (block.children ?? []).filter((child) => child.type === "variantMap"),
-              );
+              const diff = diffAgainstEmptyDraft(member.snapshot);
               return (
-                <li key={member.slug}>
-                  {member.name}: {member.snapshot.template.blocks.length} blocks
-                  {maps.length ? ` · ${maps.length} variant map(s)` : ""}
+                <li className="rounded-md border p-3" key={member.slug}>
+                  <p className="font-medium">{member.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Diff vs empty draft — accept or reject added clauses
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {diff.map((row) => (
+                      <li key={row.id}>
+                        <label className="flex items-start gap-2">
+                          <input
+                            checked={rejected.includes(row.id)}
+                            onChange={(event) => {
+                              setRejected((current) =>
+                                event.target.checked
+                                  ? [...current, row.id]
+                                  : current.filter((id) => id !== row.id),
+                              );
+                            }}
+                            type="checkbox"
+                          />
+                          <span>
+                            <span className="text-xs uppercase text-muted-foreground">
+                              {row.vsEmpty}
+                            </span>
+                            {" — "}
+                            {row.vsEmpty === "added" ? "Reject added: " : ""}
+                            {row.text.slice(0, 160) || row.type}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               );
             })}
           </ul>
+          {clusterState.discriminator ? (
+            <p className="text-sm">
+              Discriminator field: {clusterState.discriminator.id} (
+              {clusterState.discriminator.options
+                .map((option) => option.value)
+                .join(", ")}
+              )
+            </p>
+          ) : null}
+          {clusterState.sharedFields.length ? (
+            <p className="text-sm">
+              Shared fields:{" "}
+              {clusterState.sharedFields
+                .map((field) => field.label)
+                .join(", ")}
+            </p>
+          ) : null}
           {savedDrafts ? (
             <p className="text-sm">
               Saved draft types:{" "}
@@ -162,7 +208,10 @@ export function IngestClusterPanel({
               <Button
                 disabled={pending || !reviewed}
                 onClick={() =>
-                  run(`/api/ingest-jobs/${jobId}/drafts`, { confirmed: true })
+                  run(`/api/ingest-jobs/${jobId}/drafts`, {
+                    confirmed: true,
+                    rejectedBlockIds: rejected,
+                  })
                 }
                 type="button"
               >
