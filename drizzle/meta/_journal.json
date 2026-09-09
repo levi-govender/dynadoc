@@ -57,6 +57,13 @@
       "when": 1788876796248,
       "tag": "0007_condemned_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788943492552,
+      "tag": "0008_mighty_hercules",
+      "breakpoints": true
     }
   ]
 }

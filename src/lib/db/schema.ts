@@ -263,6 +263,9 @@ export const notifications = pgTable("notifications", {
   organizationId: uuid("organization_id")
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
   kind: text("kind").notNull(),
   payload: jsonb("payload").notNull().default({}),
   readAt: timestamp("read_at", { withTimezone: true }),

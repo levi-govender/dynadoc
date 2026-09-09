@@ -23,6 +23,11 @@ export function AppNav({ role }: { role?: MembershipRole }) {
           History
         </Link>
       ) : null}
+      {role ? (
+        <Link className="underline" href="/inbox">
+          Inbox
+        </Link>
+      ) : null}
       {role && canManageOrganization(role) ? (
         <Link className="underline" href="/org">
           Organization
