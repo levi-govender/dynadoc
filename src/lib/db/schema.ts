@@ -300,6 +300,7 @@ export const ingestJobFiles = pgTable("ingest_job_files", {
   extractedText: text("extracted_text"),
   sampleImageKey: text("sample_image_key"),
   error: text("error"),
+  classification: jsonb("classification"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
