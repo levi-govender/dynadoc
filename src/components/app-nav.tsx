@@ -18,6 +18,11 @@ export function AppNav({ role }: { role?: MembershipRole }) {
           Fill
         </Link>
       ) : null}
+      {role && canGenerateInstance(role) ? (
+        <Link className="underline" href="/history">
+          History
+        </Link>
+      ) : null}
       {role && canManageOrganization(role) ? (
         <Link className="underline" href="/org">
           Organization
