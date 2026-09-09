@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { toAuthzResponse } from "./authz";
+import { InstanceNotFoundError } from "@/lib/document-types/instances";
 import {
   DRAFT_EDITOR_ROLES,
   INSTANCE_GENERATOR_ROLES,
@@ -63,4 +64,9 @@ test("operator hitting a draft route maps to HTTP 403", () => {
     const response = toAuthzResponse(error);
     assert.equal(response?.status, 403);
   }
+});
+
+test("guessing another org instance UUID maps to HTTP 404", () => {
+  const response = toAuthzResponse(new InstanceNotFoundError());
+  assert.equal(response?.status, 404);
 });

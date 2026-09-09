@@ -11,7 +11,12 @@ import {
   user,
 } from "@/lib/db/schema";
 import { withOrganization } from "@/lib/db/tenant";
-import { attachIssuedPdfKey } from "@/lib/document-types/instances";
+import {
+  attachIssuedPdfKey,
+  getInstance,
+  listInstances,
+  InstanceNotFoundError,
+} from "@/lib/document-types/instances";
 import { issuedPdfObjectKey } from "@/lib/pdf/issue";
 import {
   createInstanceFromPublished,
@@ -285,6 +290,33 @@ test("two generates insert two instance rows with distinct PDF keys", async (t) 
     assert.equal(keys.size, 2);
     assert.ok(keys.has(firstKey));
     assert.ok(keys.has(secondKey));
+
+    const listed = await listInstances({ organizationId: org.id });
+    const listedIds = new Set(listed.map((row) => row.id));
+    assert.ok(listedIds.has(first.instance.id));
+    assert.ok(listedIds.has(second.instance.id));
+    const filtered = await listInstances({
+      organizationId: org.id,
+      documentTypeId: type.id,
+    });
+    assert.equal(filtered.length, 2);
+
+    const [otherOrg] = await db
+      .insert(organizations)
+      .values({
+        externalId: `other-${stamp}`,
+        name: "Other org",
+      })
+      .returning({ id: organizations.id });
+    assert.ok(otherOrg);
+    await assert.rejects(
+      () =>
+        getInstance({
+          organizationId: otherOrg.id,
+          instanceId: first.instance.id,
+        }),
+      InstanceNotFoundError,
+    );
   } catch (error) {
     if (error instanceof assert.AssertionError) {
       throw error;
