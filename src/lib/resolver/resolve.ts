@@ -56,6 +56,21 @@ function placeholder(field: string) {
   return `{{${field}}}`;
 }
 
+function noteWarning(
+  warnings: ResolveWarning[],
+  field: string,
+  token: string,
+) {
+  if (
+    warnings.some(
+      (warning) => warning.field === field && warning.placeholder === token,
+    )
+  ) {
+    return;
+  }
+  warnings.push({ field, placeholder: token });
+}
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
@@ -242,7 +257,7 @@ function interpolateText(
   return text.replace(BINDING, (match, field: string) => {
     const { missing, value } = readAnswer(answers, field);
     if (missing || value === null) {
-      warnings.push({ field, placeholder: match });
+      noteWarning(warnings, field, match);
       return match;
     }
     return formatValue(value);
@@ -264,7 +279,7 @@ function resolveInline(
     const { missing, value } = readAnswer(answers, inline.field);
     if (missing || value === null) {
       const token = placeholder(inline.field);
-      warnings.push({ field: inline.field, placeholder: token });
+      noteWarning(warnings, inline.field, token);
       return { type: "text", text: token };
     }
     return { type: "text", text: formatValue(value) };
@@ -278,7 +293,7 @@ function resolveInline(
     };
   }
   const token = placeholder(inline.field);
-  warnings.push({ field: inline.field, placeholder: token });
+  noteWarning(warnings, inline.field, token);
   return { type: "text", text: token };
 }
 

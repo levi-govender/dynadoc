@@ -187,3 +187,47 @@ test("repeatable group expands two table rows", () => {
   assert.equal(table?.rows?.[0]?.[0]?.text, "Kickoff");
   assert.equal(table?.rows?.[1]?.[0]?.text, "Handover");
 });
+
+test("repeatable missing bindings warn once, not once per empty row", () => {
+  const withSchedule = parseDocumentTypeVersionSnapshot({
+    ...snapshot,
+    formSchema: {
+      schemaVersion: 1,
+      groups: [
+        ...snapshot.formSchema.groups,
+        {
+          id: "schedule",
+          title: "Schedule",
+          repeatable: true,
+          fields: [
+            {
+              id: "description",
+              type: "text",
+              label: "Item",
+            },
+          ],
+        },
+      ],
+    },
+    template: {
+      schemaVersion: 1,
+      blocks: [
+        {
+          id: "schedule-table",
+          type: "table",
+          children: [{ type: "bind", field: "schedule[].description" }],
+        },
+      ],
+    },
+  });
+  const result = resolveDocument(withSchedule, {
+    employmentType: "contractor",
+    jobTitle: "Engineer",
+    startDate: "2026-04-01",
+    schedule: [{}, {}],
+  });
+  const missing = result.warnings.filter(
+    (warning) => warning.field === "schedule[].description",
+  );
+  assert.equal(missing.length, 1);
+});
