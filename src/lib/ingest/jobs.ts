@@ -6,6 +6,7 @@ import {
   extractIngestText,
   INGEST_FILE_MAX_BYTES,
   INGEST_JOB_CLASSIFIED,
+  INGEST_JOB_CLUSTERED,
   INGEST_JOB_UPLOADED,
   INGEST_MAX_FILES,
   parseIngestCategory,
@@ -19,6 +20,12 @@ import {
   type IngestClassification,
 } from "@/lib/ingest/classify";
 import { applyIngestGates } from "@/lib/ingest/gates";
+import {
+  mergeIngestClusters,
+  proposeIngestClusters,
+  splitIngestCluster,
+  type IngestClusterState,
+} from "@/lib/ingest/cluster";
 import { notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
@@ -206,6 +213,7 @@ export async function getIngestJob(args: {
       category?: IngestCategory;
       mode?: IngestMode;
       gatesApplied?: boolean;
+      clusterState?: IngestClusterState;
     };
     return {
       job,
@@ -213,6 +221,7 @@ export async function getIngestJob(args: {
       category: payload.category,
       mode: payload.mode,
       gatesApplied: Boolean(payload.gatesApplied),
+      clusterState: payload.clusterState ?? null,
     };
   });
 }
@@ -308,6 +317,81 @@ export async function classifyIngestJob(args: {
   return getIngestJob(args);
 }
 
+async function saveClusterState(args: {
+  organizationId: string;
+  jobId: string;
+  loaded: Awaited<ReturnType<typeof getIngestJob>>;
+  clusterState: IngestClusterState;
+}) {
+  const nextPayload = {
+    ...(args.loaded.job.payload as Record<string, unknown>),
+    category: args.loaded.category,
+    mode: args.loaded.mode,
+    gatesApplied: args.loaded.gatesApplied,
+    clusterState: args.clusterState,
+    published: false,
+  };
+  await withOrganization(args.organizationId, async (db) => {
+    await db
+      .update(ingestJobs)
+      .set({ status: INGEST_JOB_CLUSTERED, payload: nextPayload })
+      .where(
+        and(
+          eq(ingestJobs.id, args.jobId),
+          organizationEq(ingestJobs.organizationId, args.organizationId),
+        ),
+      );
+  });
+}
+
+export async function clusterIngestJob(args: {
+  organizationId: string;
+  jobId: string;
+}) {
+  const loaded = await getIngestJob(args);
+  if (!loaded.gatesApplied) {
+    throw new IngestUploadError("Run classify and gates before clustering");
+  }
+  const clusterState = proposeIngestClusters(loaded.files);
+  await saveClusterState({ ...args, loaded, clusterState });
+  return getIngestJob(args);
+}
+
+export async function mergeIngestJobClusters(args: {
+  organizationId: string;
+  jobId: string;
+  clusterIds: string[];
+}) {
+  const loaded = await getIngestJob(args);
+  if (!loaded.clusterState) {
+    throw new IngestUploadError("Cluster the job before merging");
+  }
+  const clusterState = mergeIngestClusters(
+    loaded.clusterState,
+    args.clusterIds,
+  );
+  await saveClusterState({ ...args, loaded, clusterState });
+  return getIngestJob(args);
+}
+
+export async function splitIngestJobCluster(args: {
+  organizationId: string;
+  jobId: string;
+  clusterId: string;
+}) {
+  const loaded = await getIngestJob(args);
+  if (!loaded.clusterState) {
+    throw new IngestUploadError("Cluster the job before splitting");
+  }
+  const clusterState = splitIngestCluster(
+    loaded.clusterState,
+    args.clusterId,
+    loaded.files,
+  );
+  await saveClusterState({ ...args, loaded, clusterState });
+  return getIngestJob(args);
+}
+
 export async function listIngestJobs(args: { organizationId: string }) {
   return withOrganization(args.organizationId, async (db) => {
     return db
@@ -330,6 +414,7 @@ export function serializeIngestJob(args: {
   category?: string;
   mode?: string;
   gatesApplied?: boolean;
+  clusterState?: IngestClusterState | null;
 }) {
   return {
     id: args.job.id,
@@ -337,6 +422,8 @@ export function serializeIngestJob(args: {
     category: args.category ?? null,
     mode: args.mode ?? null,
     gatesApplied: Boolean(args.gatesApplied),
+    clusterState: args.clusterState ?? null,
+    published: false,
     createdAt: args.job.createdAt.toISOString(),
     files: args.files.map((file) => ({
       id: file.id,

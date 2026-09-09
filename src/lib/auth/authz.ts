@@ -17,6 +17,7 @@ import {
   IngestJobNotFoundError,
   IngestUploadError,
 } from "@/lib/ingest/jobs";
+import { IngestClusterError } from "@/lib/ingest/cluster";
 import { InvalidIngestMetaError } from "@/lib/ingest/extract";
 import {
   documentTypeErrorStatus,
@@ -41,7 +42,8 @@ export function toAuthzResponse(error: unknown) {
   }
   if (
     error instanceof InvalidIngestMetaError ||
-    error instanceof IngestUploadError
+    error instanceof IngestUploadError ||
+    error instanceof IngestClusterError
   ) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

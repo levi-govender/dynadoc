@@ -2,6 +2,7 @@ export const INGEST_CATEGORIES = ["contract", "policy", "other"] as const;
 export const INGEST_MODES = ["single_type", "decompose"] as const;
 export const INGEST_JOB_UPLOADED = "uploaded";
 export const INGEST_JOB_CLASSIFIED = "classified";
+export const INGEST_JOB_CLUSTERED = "clustered";
 export const INGEST_MAX_FILES = 40;
 export const INGEST_FILE_MAX_BYTES = 20 * 1024 * 1024;
 

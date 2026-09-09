@@ -32,6 +32,17 @@ test("employment contract in a contract job can be in-family", async () => {
   assert.equal(result.holdout, false);
 });
 
+test("independent contractor wording is not employment", async () => {
+  const result = await classifyIngestFile({
+    filename: "contractor.pdf",
+    extractedText:
+      "This independent contractor agreement is a consultancy. The contractor is not an employee.",
+    declaredCategory: "contract",
+  });
+  assert.equal(result.documentType, "contractor");
+  assert.equal(result.inFamily, true);
+});
+
 test("low confidence text is holdout and not auto-include", () => {
   const labels = heuristicClassify({
     filename: "scan.pdf",

@@ -2,7 +2,7 @@ import type { IngestClassification } from "@/lib/ingest/classify";
 import type { IngestMode } from "@/lib/ingest/extract";
 
 export const RELATED_DOCUMENT_TYPE_GROUPS: readonly (readonly string[])[] = [
-  ["employment", "nda"],
+  ["employment", "nda", "contractor"],
   ["lease"],
   ["policy"],
   ["invoice"],
