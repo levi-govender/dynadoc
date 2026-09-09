@@ -32,6 +32,8 @@ export async function issueInstancePdf(args: {
   snapshot: DocumentTypeVersionSnapshot;
   resolved: ResolveResult;
   draftWatermark?: boolean;
+  /** When false, render only. Never put or attach issuedPdfKey. */
+  persist?: boolean;
 }) {
   const logo = await resolvePdfLogo({
     organizationId: args.organizationId,
@@ -48,7 +50,7 @@ export async function issueInstancePdf(args: {
   const filename = args.draftWatermark
     ? stampName.replace(/\.pdf$/, "-DRAFT.pdf")
     : stampName;
-  if (args.draftWatermark) {
+  if (args.draftWatermark || args.persist === false) {
     return { bytes, filename, objectKey: null };
   }
   if (!args.instanceId) {

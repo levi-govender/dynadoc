@@ -100,7 +100,9 @@ export const memberships = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [unique("memberships_org_user").on(table.organizationId, table.userId)],
+  (table) => [
+    unique("memberships_org_user").on(table.organizationId, table.userId),
+  ],
 );
 
 export const organizationInvites = pgTable(
@@ -123,7 +125,10 @@ export const organizationInvites = pgTable(
       .notNull(),
   },
   (table) => [
-    unique("organization_invites_org_email").on(table.organizationId, table.email),
+    unique("organization_invites_org_email").on(
+      table.organizationId,
+      table.email,
+    ),
   ],
 );
 
@@ -235,6 +240,10 @@ export const instances = pgTable("instances", {
   resolvedAst: jsonb("resolved_ast").notNull(),
   /** Set once after a successful PDF put. Later updates must no-op. */
   issuedPdfKey: text("issued_pdf_key"),
+  /** Dropbox Sign signature_request_id. Does not change issued PDF bytes. */
+  esignEnvelopeId: text("esign_envelope_id"),
+  esignStatus: text("esign_status"),
+  esignProvider: text("esign_provider"),
   createdBy: text("created_by").references(() => user.id, {
     onDelete: "set null",
   }),

@@ -15,6 +15,13 @@ export class InstanceNotFoundError extends Error {
   }
 }
 
+export class EsignEnvelopeExistsError extends Error {
+  constructor(message = "E-sign envelope already stored") {
+    super(message);
+    this.name = "EsignEnvelopeExistsError";
+  }
+}
+
 export async function getInstance(args: {
   organizationId: string;
   instanceId: string;
@@ -84,10 +91,14 @@ export async function listInstances(args: {
       filters.push(eq(documentTypes.id, args.documentTypeId));
     }
     if (args.from) {
-      filters.push(gte(instances.createdAt, new Date(`${args.from}T00:00:00.000Z`)));
+      filters.push(
+        gte(instances.createdAt, new Date(`${args.from}T00:00:00.000Z`)),
+      );
     }
     if (args.to) {
-      filters.push(lte(instances.createdAt, new Date(`${args.to}T23:59:59.999Z`)));
+      filters.push(
+        lte(instances.createdAt, new Date(`${args.to}T23:59:59.999Z`)),
+      );
     }
     return db
       .select({
@@ -97,6 +108,10 @@ export async function listInstances(args: {
         createdByName: user.name,
         createdByEmail: user.email,
         issuedPdfKey: instances.issuedPdfKey,
+        esignEnvelopeId: instances.esignEnvelopeId,
+        esignStatus: instances.esignStatus,
+        esignProvider: instances.esignProvider,
+        styleTheme: documentTypeVersions.styleTheme,
         typeId: documentTypes.id,
         typeName: documentTypes.name,
         typeSlug: documentTypes.slug,
@@ -158,5 +173,91 @@ export async function attachIssuedPdfKey(args: {
       throw new InstanceNotFoundError();
     }
     return existing;
+  });
+}
+
+export async function attachEsignEnvelope(args: {
+  organizationId: string;
+  instanceId: string;
+  envelopeId: string;
+  status: string;
+  provider: string;
+}) {
+  return withOrganization(args.organizationId, async (db) => {
+    const [updated] = await db
+      .update(instances)
+      .set({
+        esignEnvelopeId: args.envelopeId,
+        esignStatus: args.status,
+        esignProvider: args.provider,
+      })
+      .where(
+        and(
+          eq(instances.id, args.instanceId),
+          organizationEq(instances.organizationId, args.organizationId),
+          isNull(instances.esignEnvelopeId),
+        ),
+      )
+      .returning({
+        id: instances.id,
+        issuedPdfKey: instances.issuedPdfKey,
+        esignEnvelopeId: instances.esignEnvelopeId,
+        esignStatus: instances.esignStatus,
+      });
+    if (updated) {
+      return updated;
+    }
+    const [existing] = await db
+      .select({
+        id: instances.id,
+        issuedPdfKey: instances.issuedPdfKey,
+        esignEnvelopeId: instances.esignEnvelopeId,
+        esignStatus: instances.esignStatus,
+      })
+      .from(instances)
+      .where(
+        and(
+          eq(instances.id, args.instanceId),
+          organizationEq(instances.organizationId, args.organizationId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw new InstanceNotFoundError();
+    }
+    if (existing.esignEnvelopeId) {
+      throw new EsignEnvelopeExistsError();
+    }
+    return existing;
+  });
+}
+
+export async function setEsignStatus(args: {
+  organizationId: string;
+  instanceId: string;
+  envelopeId: string;
+  status: string;
+}) {
+  return withOrganization(args.organizationId, async (db) => {
+    const [updated] = await db
+      .update(instances)
+      .set({ esignStatus: args.status })
+      .where(
+        and(
+          eq(instances.id, args.instanceId),
+          organizationEq(instances.organizationId, args.organizationId),
+          eq(instances.esignEnvelopeId, args.envelopeId),
+        ),
+      )
+      .returning({
+        id: instances.id,
+        issuedPdfKey: instances.issuedPdfKey,
+        esignEnvelopeId: instances.esignEnvelopeId,
+        esignStatus: instances.esignStatus,
+      });
+    if (!updated) {
+      throw new InstanceNotFoundError();
+    }
+    return updated;
   });
 }
