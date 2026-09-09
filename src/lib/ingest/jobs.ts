@@ -21,6 +21,11 @@ import {
 } from "@/lib/ingest/classify";
 import { applyIngestGates } from "@/lib/ingest/gates";
 import {
+  applyRereviewAction,
+  INGEST_HOLD_OUT_ACTIONS,
+  type IngestRereviewAction,
+} from "@/lib/ingest/rereview";
+import {
   mergeIngestClusters,
   proposeIngestClusters,
   splitIngestCluster,
@@ -28,7 +33,7 @@ import {
 } from "@/lib/ingest/cluster";
 import { applyIngestReview } from "@/lib/ingest/review";
 import { importFromJson } from "@/lib/document-types/import";
-import { notify } from "@/lib/notifications";
+import { markNotificationRead, notify } from "@/lib/notifications";
 import { PDF_MAX_BYTES, buildObjectKey, ensureBucket, putObject } from "@/lib/storage";
 
 export class IngestJobNotFoundError extends Error {
@@ -310,6 +315,7 @@ export async function classifyIngestJob(args: {
     (holdout) => holdout.reason !== "extract_error",
   );
   if (args.userId && mismatchHoldouts.length > 0) {
+    const byId = new Map(gated.files.map((file) => [file.id, file]));
     await notify({
       organizationId: args.organizationId,
       userId: args.userId,
@@ -317,8 +323,147 @@ export async function classifyIngestJob(args: {
       payload: {
         jobId: args.jobId,
         query: `ingest_job:${args.jobId}:holdout`,
-        files: mismatchHoldouts,
+        suggestedActions: INGEST_HOLD_OUT_ACTIONS,
+        files: mismatchHoldouts.map((holdout) => {
+          const classification = byId.get(holdout.fileId)?.classification;
+          return {
+            fileId: holdout.fileId,
+            filename: holdout.filename,
+            category: classification?.category ?? null,
+            documentType: holdout.documentType,
+            confidence: classification?.confidence ?? null,
+            reason: holdout.reason,
+            suggestedActions: INGEST_HOLD_OUT_ACTIONS,
+          };
+        }),
       },
+    });
+  }
+  return getIngestJob(args);
+}
+
+async function persistFileClassification(args: {
+  organizationId: string;
+  fileId: string;
+  classification: IngestClassification | null;
+}) {
+  await withOrganization(args.organizationId, async (db) => {
+    await db
+      .update(ingestJobFiles)
+      .set({ classification: args.classification })
+      .where(
+        and(
+          eq(ingestJobFiles.id, args.fileId),
+          organizationEq(ingestJobFiles.organizationId, args.organizationId),
+        ),
+      );
+  });
+}
+
+export async function rereviewIngestFile(args: {
+  organizationId: string;
+  jobId: string;
+  fileId: string;
+  action: IngestRereviewAction;
+  userId: string;
+  category?: IngestCategory;
+  documentType?: string;
+  notificationId?: string;
+}) {
+  const loaded = await getIngestJob(args);
+  if (!loaded.category || !loaded.mode) {
+    throw new IngestUploadError("Ingest job is missing category or mode");
+  }
+  const file = loaded.files.find((row) => row.id === args.fileId);
+  if (!file?.classification) {
+    throw new IngestUploadError("Ingest file has no classification to review");
+  }
+  if (args.action === "switch_to_decompose") {
+    const nextPayload = {
+      ...(loaded.job.payload as Record<string, unknown>),
+      category: loaded.category,
+      mode: "decompose",
+    };
+    await withOrganization(args.organizationId, async (db) => {
+      await db
+        .update(ingestJobs)
+        .set({ payload: nextPayload })
+        .where(
+          and(
+            eq(ingestJobs.id, args.jobId),
+            organizationEq(ingestJobs.organizationId, args.organizationId),
+          ),
+        );
+    });
+    const classified = await classifyIngestJob({
+      organizationId: args.organizationId,
+      jobId: args.jobId,
+      userId: args.userId,
+    });
+    await notify({
+      organizationId: args.organizationId,
+      userId: args.userId,
+      type: "ingest_rereview",
+      payload: {
+        jobId: args.jobId,
+        fileId: args.fileId,
+        action: args.action,
+        query: `ingest_job:${args.jobId}:rereview`,
+      },
+    });
+    if (args.notificationId) {
+      await markNotificationRead({
+        organizationId: args.organizationId,
+        userId: args.userId,
+        notificationId: args.notificationId,
+      });
+    }
+    return classified;
+  }
+  const classification = applyRereviewAction({
+    classification: file.classification as IngestClassification,
+    action: args.action,
+    declaredCategory: loaded.category,
+    labels:
+      args.category && args.documentType
+        ? { category: args.category, documentType: args.documentType }
+        : undefined,
+  });
+  await persistFileClassification({
+    organizationId: args.organizationId,
+    fileId: file.id,
+    classification,
+  });
+  if (args.action === "recategorize") {
+    const refreshed = await getIngestJob(args);
+    const gated = applyIngestGates({
+      mode: loaded.mode,
+      files: refreshed.files,
+    });
+    for (const row of gated.files) {
+      await persistFileClassification({
+        organizationId: args.organizationId,
+        fileId: row.id,
+        classification: row.classification,
+      });
+    }
+  }
+  await notify({
+    organizationId: args.organizationId,
+    userId: args.userId,
+    type: "ingest_rereview",
+    payload: {
+      jobId: args.jobId,
+      fileId: args.fileId,
+      action: args.action,
+      query: `ingest_job:${args.jobId}:rereview`,
+    },
+  });
+  if (args.notificationId) {
+    await markNotificationRead({
+      organizationId: args.organizationId,
+      userId: args.userId,
+      notificationId: args.notificationId,
     });
   }
   return getIngestJob(args);

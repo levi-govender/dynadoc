@@ -24,7 +24,8 @@ export default async function InboxPage() {
       <AppNav role={membership.role} />
       <h1 className="text-xl font-semibold">Inbox</h1>
       <p className="text-sm text-muted-foreground">
-        In-app notices for this account. Email is not sent from this stub.
+        In-app notices for this account. Holdout rows include rereview actions
+        (no silent merge). Email is optional later using the same payload.
       </p>
       <InboxList initialItems={rows.map(serializeNotification)} />
     </div>

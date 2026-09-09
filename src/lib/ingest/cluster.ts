@@ -57,6 +57,7 @@ export function eligibleClusterFiles(files: ClusterSourceFile[]) {
     return Boolean(
       labels?.clusterEligible &&
         !labels.holdout &&
+        !labels.needsAuthorAction &&
         file.extractedText &&
         !file.filename.toLowerCase().endsWith(".png"),
     );

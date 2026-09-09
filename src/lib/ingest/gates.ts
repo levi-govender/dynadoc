@@ -73,6 +73,7 @@ function holdoutClassification(
     inFamily: false,
     clusterEligible: false,
     gateReason: reason,
+    needsAuthorAction: true,
   };
 }
 
@@ -83,6 +84,7 @@ function passClassification(
     ...classification,
     clusterEligible: true,
     gateReason: undefined,
+    needsAuthorAction: false,
   };
 }
 
@@ -130,6 +132,7 @@ export function applyIngestGates(args: {
           ...file.classification,
           clusterEligible: false,
           gateReason: "classify_holdout",
+          needsAuthorAction: true,
         },
       };
     }
