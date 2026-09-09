@@ -4,6 +4,7 @@ import { toAuthzResponse } from "@/lib/auth/authz";
 import {
   PublishedVersionImmutableError,
   assertPublishedVersionImmutable,
+  parseInstanceGenerateBody,
   snapshotForOperatorGenerate,
 } from "./versions";
 import { parseDocumentTypeVersionSnapshot } from "@/types/document-type";
@@ -26,6 +27,22 @@ test("operator generate uses published snapshot even if draft changed", () => {
     published.formSchema.groups[0]?.title,
   );
   assert.notEqual(used.formSchema.groups[0]?.title, "Changed draft title");
+});
+
+test("generate body fromDraft is only true when the flag is boolean true", () => {
+  assert.deepEqual(parseInstanceGenerateBody(null), {
+    answers: {},
+    fromDraft: false,
+  });
+  assert.deepEqual(parseInstanceGenerateBody({ answers: { a: 1 } }), {
+    answers: { a: 1 },
+    fromDraft: false,
+  });
+  assert.equal(
+    parseInstanceGenerateBody({ fromDraft: true, answers: { a: 1 } }).fromDraft,
+    true,
+  );
+  assert.equal(parseInstanceGenerateBody({ fromDraft: "true" }).fromDraft, false);
 });
 
 test("published version JSON cannot be mutated via API helper", () => {

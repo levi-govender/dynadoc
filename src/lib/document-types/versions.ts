@@ -118,6 +118,49 @@ export async function saveDraft(args: {
   });
 }
 
+export function parseInstanceGenerateBody(body: unknown): {
+  answers: unknown;
+  fromDraft: boolean;
+} {
+  if (!body || typeof body !== "object") {
+    return { answers: {}, fromDraft: false };
+  }
+  const record = body as { answers?: unknown; fromDraft?: unknown };
+  return {
+    answers: record.answers === undefined ? {} : record.answers,
+    fromDraft: record.fromDraft === true,
+  };
+}
+
+export async function resolveDraftForGenerate(args: {
+  organizationId: string;
+  documentTypeId: string;
+  answers?: unknown;
+}) {
+  return withOrganization(args.organizationId, async (db) => {
+    const [type] = await db
+      .select()
+      .from(documentTypes)
+      .where(
+        and(
+          eq(documentTypes.id, args.documentTypeId),
+          organizationEq(documentTypes.organizationId, args.organizationId),
+        ),
+      )
+      .limit(1);
+    if (!type) {
+      throw new DocumentTypeNotFoundError();
+    }
+    if (type.draftSnapshot == null) {
+      throw new EmptyDraftError();
+    }
+    const snapshot = parseDocumentTypeVersionSnapshot(type.draftSnapshot);
+    const answers = parseOperatorAnswers(snapshot.formSchema, args.answers);
+    const resolved = resolveDocument(snapshot, answers);
+    return { type, snapshot, resolved };
+  });
+}
+
 export async function publishDocumentType(args: {
   organizationId: string;
   documentTypeId: string;

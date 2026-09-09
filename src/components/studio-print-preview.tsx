@@ -11,9 +11,14 @@ import type { DocumentTypeVersionSnapshot } from "@/types/document-type";
 type Props = {
   snapshot: DocumentTypeVersionSnapshot;
   resolved: StudioResolve;
+  draftWatermark?: boolean;
 };
 
-export function StudioPrintPreview({ snapshot, resolved }: Props) {
+export function StudioPrintPreview({
+  snapshot,
+  resolved,
+  draftWatermark = false,
+}: Props) {
   const theme = snapshot.styleTheme;
   const css = printPreviewPageCss(theme);
   const logoSrc = printPreviewLogoSrc(theme);
@@ -29,11 +34,14 @@ export function StudioPrintPreview({ snapshot, resolved }: Props) {
         <p className="text-xs text-muted-foreground">
           HTML stand-in for the issued PDF. Hyphenation, page breaks, and
           exact type metrics may differ in the downloaded file.
+          {draftWatermark
+            ? " Unpublished drafts show a DRAFT watermark."
+            : null}
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-6">
         <article
-          className="mx-auto bg-white text-zinc-900 shadow-xl"
+          className="relative mx-auto overflow-hidden bg-white text-zinc-900 shadow-xl"
           style={{
             width: css.width,
             minHeight: css.minHeight,
@@ -45,6 +53,15 @@ export function StudioPrintPreview({ snapshot, resolved }: Props) {
             fontSize: css.fontSize,
           }}
         >
+          {draftWatermark ? (
+            <p
+              aria-hidden
+              className="pointer-events-none absolute inset-0 flex items-center justify-center text-7xl font-bold tracking-widest text-red-700/15"
+              style={{ transform: "rotate(-28deg)" }}
+            >
+              DRAFT
+            </p>
+          ) : null}
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

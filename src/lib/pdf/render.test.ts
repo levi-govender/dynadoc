@@ -55,3 +55,31 @@ test("PDF renders an uploaded signature image", async () => {
   });
   assert.ok(isPdfBuffer(bytes));
 });
+
+test("draft watermark PDF includes DRAFT; published PDF does not", async () => {
+  const { isPdfBuffer, renderDocumentPdf } = await import("./render");
+  const snapshot = parseDocumentTypeVersionSnapshot(fixture);
+  const resolved = resolveDocument(snapshot, {
+    employmentType: "permanent",
+    jobTitle: "Engineer",
+    startDate: "2026-01-01",
+    noticeWeeks: 4,
+  });
+  const draft = await renderDocumentPdf({
+    theme: snapshot.styleTheme,
+    document: resolved.document,
+    logo: { kind: "none" },
+    answers: resolved.answers,
+    draftWatermark: true,
+  });
+  const published = await renderDocumentPdf({
+    theme: snapshot.styleTheme,
+    document: resolved.document,
+    logo: { kind: "none" },
+    answers: resolved.answers,
+  });
+  assert.ok(isPdfBuffer(draft));
+  assert.ok(isPdfBuffer(published));
+  assert.match(draft.toString("latin1"), /DRAFT/);
+  assert.doesNotMatch(published.toString("latin1"), /\/Subject\s*\(DRAFT\)/);
+});
