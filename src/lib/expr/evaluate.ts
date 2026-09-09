@@ -23,7 +23,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-/** Flat keys win; otherwise walk dotted paths (`party.name`). Array indexes are a later ticket. */
+/** Flat keys win; otherwise walk dotted paths (`party.name`). Repeatable overlays use `group[].field`. */
 export function readAnswer(answers: Answers, field: string) {
   if (Object.hasOwn(answers, field)) {
     const value = answers[field];

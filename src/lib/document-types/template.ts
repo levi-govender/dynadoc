@@ -1,4 +1,4 @@
-import type { Block, Expr, Inline, Template } from "@/types/document-type";
+import { parseRepeatableBind } from "@/lib/document-types/repeatable";
 import { templateSchema } from "@/types/document-type";
 
 export const BLOCK_TYPES = [
@@ -217,6 +217,10 @@ export function blockReferencesField(block: Block, fieldId: string) {
   for (const child of block.children ?? []) {
     if (child.type === "bind" || child.type === "variantMap") {
       fields.add(child.field);
+      const parsed = parseRepeatableBind(child.field);
+      if (parsed) {
+        fields.add(parsed.fieldId);
+      }
     }
   }
   return fields.has(fieldId);

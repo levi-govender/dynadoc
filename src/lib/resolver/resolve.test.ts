@@ -139,3 +139,51 @@ test("cycle in activatesGroupIds throws", () => {
     GroupActivationCycleError,
   );
 });
+
+test("repeatable group expands two table rows", () => {
+  const withSchedule = parseDocumentTypeVersionSnapshot({
+    ...snapshot,
+    formSchema: {
+      schemaVersion: 1,
+      groups: [
+        ...snapshot.formSchema.groups,
+        {
+          id: "schedule",
+          title: "Schedule",
+          repeatable: true,
+          fields: [
+            {
+              id: "description",
+              type: "text",
+              label: "Item",
+              required: true,
+            },
+          ],
+        },
+      ],
+    },
+    template: {
+      schemaVersion: 1,
+      blocks: [
+        ...snapshot.template.blocks,
+        {
+          id: "schedule-table",
+          type: "table",
+          children: [{ type: "bind", field: "schedule[].description" }],
+        },
+      ],
+    },
+  });
+  const result = resolveDocument(withSchedule, {
+    employmentType: "contractor",
+    jobTitle: "Engineer",
+    startDate: "2026-04-01",
+    schedule: [{ description: "Kickoff" }, { description: "Handover" }],
+  });
+  const table = result.document.blocks.find(
+    (block) => block.id === "schedule-table",
+  );
+  assert.equal(table?.rows?.length, 2);
+  assert.equal(table?.rows?.[0]?.[0]?.text, "Kickoff");
+  assert.equal(table?.rows?.[1]?.[0]?.text, "Handover");
+});

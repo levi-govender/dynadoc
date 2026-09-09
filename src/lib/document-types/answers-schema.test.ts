@@ -69,3 +69,48 @@ test("endDate after startDate is required when fixed-term is visible", () => {
   });
   assert.equal(answers.endDate, "2026-05-01");
 });
+
+test("repeatable rows are validated and capped", () => {
+  const repeatable = {
+    ...form,
+    groups: [
+      ...form.groups,
+      {
+        id: "schedule",
+        title: "Schedule",
+        repeatable: true as const,
+        fields: [
+          {
+            id: "description",
+            type: "text" as const,
+            label: "Item",
+            required: true as const,
+          },
+        ],
+      },
+    ],
+  };
+  const answers = parseOperatorAnswers(repeatable, {
+    employmentType: "contractor",
+    jobTitle: "Engineer",
+    startDate: "2026-04-01",
+    schedule: [{ description: "Kickoff" }, { description: "Handover" }],
+  });
+  assert.deepEqual(answers.schedule, [
+    { description: "Kickoff" },
+    { description: "Handover" },
+  ]);
+  const tooMany = Array.from({ length: 51 }, () => ({
+    description: "item",
+  }));
+  assert.throws(
+    () =>
+      parseOperatorAnswers(repeatable, {
+        employmentType: "contractor",
+        jobTitle: "Engineer",
+        startDate: "2026-04-01",
+        schedule: tooMany,
+      }),
+    OperatorAnswersError,
+  );
+});

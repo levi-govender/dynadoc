@@ -76,6 +76,7 @@ export const fieldGroupSchema = z.object({
   id: identifier,
   title: z.string().min(1),
   visibleWhen: exprSchema.optional(),
+  repeatable: z.boolean().optional(),
   fields: z.array(fieldSchema),
 });
 

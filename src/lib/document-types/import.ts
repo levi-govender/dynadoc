@@ -68,6 +68,17 @@ export function parseImportPayload(input: unknown): ParsedImport {
   throw exported.error;
 }
 
+function remapBinding(field: string, ids: Map<string, string>) {
+  const marker = "[].";
+  const index = field.indexOf(marker);
+  if (index > 0) {
+    const groupId = field.slice(0, index);
+    const fieldId = field.slice(index + marker.length);
+    return `${ids.get(groupId) ?? groupId}[].${ids.get(fieldId) ?? fieldId}`;
+  }
+  return ids.get(field) ?? field;
+}
+
 function remapExpr(expr: Expr, ids: Map<string, string>): Expr {
   switch (expr.op) {
     case "eq":
@@ -176,7 +187,7 @@ export function remapSnapshot(
           : undefined,
         children: block.children?.map((child) => {
           if (child.type === "bind" || child.type === "variantMap") {
-            return { ...child, field: ids.get(child.field) ?? child.field };
+            return { ...child, field: remapBinding(child.field, ids) };
           }
           return child;
         }),
