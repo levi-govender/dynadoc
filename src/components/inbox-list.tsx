@@ -11,6 +11,53 @@ export type InboxItem = {
   createdAt: string;
 };
 
+function holdoutFiles(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+  const files = (payload as { files?: unknown }).files;
+  if (!Array.isArray(files)) {
+    return [];
+  }
+  return files.flatMap((file) => {
+    if (!file || typeof file !== "object") {
+      return [];
+    }
+    const record = file as {
+      fileId?: unknown;
+      filename?: unknown;
+      category?: unknown;
+      documentType?: unknown;
+      confidence?: unknown;
+    };
+    if (typeof record.fileId !== "string") {
+      return [];
+    }
+    return [
+      {
+        fileId: record.fileId,
+        filename: typeof record.filename === "string" ? record.filename : "file",
+        category:
+          typeof record.category === "string" ? record.category : "unknown",
+        documentType:
+          typeof record.documentType === "string"
+            ? record.documentType
+            : "unknown",
+        confidence:
+          typeof record.confidence === "number" ? record.confidence : null,
+      },
+    ];
+  });
+}
+
+function jobIdFromPayload(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const jobId = (payload as { jobId?: unknown }).jobId;
+  return typeof jobId === "string" ? jobId : null;
+}
+
 function summary(payload: unknown) {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -28,6 +75,7 @@ function summary(payload: unknown) {
 export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
   const [items, setItems] = useState(initialItems);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function typeLabel(type: string) {
     if (type === "ingest_holdout") {
@@ -72,6 +120,7 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
       >
         Send test notification
       </Button>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">No notifications yet.</p>
       ) : (
@@ -84,6 +133,118 @@ export function InboxList({ initialItems }: { initialItems: InboxItem[] }) {
                   {summary(item.payload)}
                 </p>
               ) : null}
+              {item.type === "ingest_holdout"
+                ? holdoutFiles(item.payload).map((file) => {
+                    const jobId = jobIdFromPayload(item.payload);
+                    return (
+                      <div className="mt-2 text-sm" key={file.fileId}>
+                        <p>
+                          {file.filename} · {file.documentType} / {file.category}
+                          {file.confidence != null
+                            ? ` · ${Math.round(file.confidence * 100)}%`
+                            : ""}
+                        </p>
+                        {jobId && !item.readAt ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {(
+                              [
+                                "exclude",
+                                "confirm_and_continue",
+                                "switch_to_decompose",
+                              ] as const
+                            ).map((action) => (
+                              <Button
+                                key={action}
+                                onClick={() => {
+                                  setError(null);
+                                  void fetch(
+                                    `/api/ingest-jobs/${jobId}/rereview`,
+                                    {
+                                      method: "POST",
+                                      headers: {
+                                        "content-type": "application/json",
+                                      },
+                                      body: JSON.stringify({
+                                        fileId: file.fileId,
+                                        action,
+                                        notificationId: item.id,
+                                      }),
+                                    },
+                                  ).then(async (response) => {
+                                    if (!response.ok) {
+                                      const body: unknown = await response
+                                        .json()
+                                        .catch(() => null);
+                                      setError(
+                                        body &&
+                                          typeof body === "object" &&
+                                          "error" in body &&
+                                          typeof body.error === "string"
+                                          ? body.error
+                                          : "Rereview failed",
+                                      );
+                                      return;
+                                    }
+                                    setItems((current) =>
+                                      current.map((row) =>
+                                        row.id === item.id
+                                          ? { ...row, readAt: new Date().toISOString() }
+                                          : row,
+                                      ),
+                                    );
+                                  });
+                                }}
+                                size="sm"
+                                type="button"
+                                variant="outline"
+                              >
+                                {action.replaceAll("_", " ")}
+                              </Button>
+                            ))}
+                            <Button
+                              onClick={() => {
+                                setError(null);
+                                void fetch(
+                                  `/api/ingest-jobs/${jobId}/rereview`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "content-type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      fileId: file.fileId,
+                                      action: "recategorize",
+                                      category: "contract",
+                                      documentType: "employment",
+                                      notificationId: item.id,
+                                    }),
+                                  },
+                                ).then(async (response) => {
+                                  if (!response.ok) {
+                                    setError("Recategorize failed");
+                                    return;
+                                  }
+                                  setItems((current) =>
+                                    current.map((row) =>
+                                      row.id === item.id
+                                        ? { ...row, readAt: new Date().toISOString() }
+                                        : row,
+                                    ),
+                                  );
+                                });
+                              }}
+                              size="sm"
+                              type="button"
+                              variant="outline"
+                            >
+                              Recategorize as employment contract
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                : null}
               <p className="text-xs text-muted-foreground">
                 {item.createdAt.replace("T", " ").slice(0, 16)} UTC
                 {item.readAt ? " · Read" : " · Unread"}

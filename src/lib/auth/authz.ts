@@ -18,6 +18,7 @@ import {
   IngestUploadError,
 } from "@/lib/ingest/jobs";
 import { IngestClusterError } from "@/lib/ingest/cluster";
+import { IngestRereviewError } from "@/lib/ingest/rereview";
 import { InvalidIngestMetaError } from "@/lib/ingest/extract";
 import {
   documentTypeErrorStatus,
@@ -43,7 +44,8 @@ export function toAuthzResponse(error: unknown) {
   if (
     error instanceof InvalidIngestMetaError ||
     error instanceof IngestUploadError ||
-    error instanceof IngestClusterError
+    error instanceof IngestClusterError ||
+    error instanceof IngestRereviewError
   ) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

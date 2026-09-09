@@ -23,6 +23,12 @@ export type IngestClassification = IngestClassificationLabels & {
   source: "heuristic" | "llm";
   clusterEligible?: boolean;
   gateReason?: string;
+  needsAuthorAction?: boolean;
+  authorAction?:
+    | "exclude"
+    | "recategorize"
+    | "switch_to_decompose"
+    | "confirm_and_continue";
 };
 
 export function finalizeClassification(args: {
