@@ -1,50 +1,123 @@
 # Dynadoc
 
-Multi-tenant dynamic document / PDF factory. This repo is the Next.js App Router app.
+**Issue consistent contracts from one published type.**
 
-## Setup
+Dynadoc is a multi-tenant document factory. Authors design a document type once (fields, branching, layout, and branding). Operators fill answers and generate a frozen PDF and Word file. Each generate is a new issued record—issued files are never overwritten.
+
+Use it when a team repeatedly produces the same family of agreements (engagement letters, NDAs, employment contracts, and similar) and needs one source of truth instead of copy-pasted Word files.
+
+---
+
+## Features
+
+- **Document types** — Field groups, options that reveal extra sections, visibility rules, repeatable rows, and a block canvas (headings, paragraphs, lists, tables, page breaks, signature and initials slots).
+- **Author Studio** — Simple mode for most templates; advanced rules when you need them. Live paper preview from sample answers. Import and export types (including families). Optional org or type logo.
+- **Fill and issue** — Operators complete a published type, then generate. Hidden sections stay out of the answers. Required fields and cross-field rules must pass before generate.
+- **Issued files** — PDF and Word from the same resolved document. History lists every issue. Optional Dropbox Sign request against the issued PDF (status on the instance; the file is not rewritten).
+- **Ingest** — Upload a corpus of existing PDFs or Word files. Classify, cluster clauses, review a draft tree, then create **draft** types you still publish in Studio.
+- **Organizations** — Email/password auth. First sign-up creates an org and an org admin. Admins invite members (authors vs operators). Data is isolated per organization.
+
+---
+
+## Who uses it
+
+| Role | What they do |
+| ---- | ------------ |
+| **Org admin** | Invites people, sets org defaults (for example a logo). |
+| **Author** | Creates and edits drafts in Studio, runs Ingest, publishes types. |
+| **Operator** | Fills published types and downloads or e-signs issued files. Cannot edit drafts or invite. |
+
+Typical workflows:
+
+1. **Design** — Author builds a type in Studio (or starts from Ingest), previews with sample answers, publishes.
+2. **Issue** — Operator opens Fill, answers the form, generates PDF/Word, optionally sends for signature.
+3. **Learn from paper** — Author uploads existing documents at Ingest, reviews clusters and holdouts in Inbox, then publishes the resulting drafts.
+
+---
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) (current LTS)
+- [Docker](https://docs.docker.com/get-docker/) (Postgres 16 and MinIO)
+- [Make](https://www.gnu.org/software/make/)
+
+---
+
+## Getting started
 
 ```bash
 make install
-printf 'DATABASE_URL=postgres://dynadoc_app:dynadoc@localhost:5432/dynadoc\nDATABASE_MIGRATE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc\nS3_BUCKET=dynadoc\nS3_REGION=us-east-1\nS3_ENDPOINT=http://127.0.0.1:9000\nS3_ACCESS_KEY_ID=dynadoc\nS3_SECRET_ACCESS_KEY=dynadocsecret\nS3_FORCE_PATH_STYLE=true\nBETTER_AUTH_SECRET=dev-only-insecure-secret-change-me-32ch\nBETTER_AUTH_URL=http://localhost:3000\n' > .env.local
+```
+
+Create `.env.local` (never commit env files):
+
+```bash
+printf 'DATABASE_URL=postgres://dynadoc_app:dynadoc@localhost:5432/dynadoc
+DATABASE_MIGRATE_URL=postgres://dynadoc:dynadoc@localhost:5432/dynadoc
+S3_BUCKET=dynadoc
+S3_REGION=us-east-1
+S3_ENDPOINT=http://127.0.0.1:9000
+S3_ACCESS_KEY_ID=dynadoc
+S3_SECRET_ACCESS_KEY=dynadocsecret
+S3_FORCE_PATH_STYLE=true
+BETTER_AUTH_SECRET=dev-only-insecure-secret-change-me-32ch
+BETTER_AUTH_URL=http://localhost:3000
+' > .env.local
+```
+
+Start the database and object store, migrate, then run the app:
+
+```bash
 make db-up
 make db-migrate
 make dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Health check: `make health` while the server is running (`{ "ok": true, "db": "ok" }` when Postgres is up).
+Open [http://localhost:3000](http://localhost:3000) and sign up. The first account becomes org admin of a new organization.
 
-Prefer **Make** over raw npm as the app grows (`make help` lists targets). npm scripts remain the implementation.
+With the server running, `make health` should report the database as ok.
+
+Use a real `BETTER_AUTH_SECRET` outside local development.
+
+---
+
+## Configuration
+
+Required locally: Postgres URLs, S3/MinIO settings, and Better Auth URL/secret (values above match Docker Compose).
+
+| Optional | Purpose |
+| -------- | ------- |
+| `SMTP_URL`, `EMAIL_FROM` | Send invite emails. Without SMTP, the accept link is logged and shown on the Organization page. |
+| `INGEST_LLM`, `OPENAI_API_KEY` | Optional LLM classify for ingest. Heuristics are the default. |
+| `DROPBOX_SIGN_API_KEY` | E-sign issued PDFs. Test mode unless `DROPBOX_SIGN_TEST_MODE=false`. Callbacks: `POST /api/webhooks/dropbox-sign`. |
+
+Local files go to MinIO. Point `S3_ENDPOINT` at Cloudflare R2 or AWS S3 for other environments (`S3_FORCE_PATH_STYLE=false` on AWS if required).
+
+Schema changes: `make db-generate` then `make db-migrate`. Do not use `drizzle-kit push` in production.
+
+---
 
 ## Commands
 
-| Command               | What it does                                                  |
-| --------------------- | ------------------------------------------------------------- |
-| `make install`        | `npm install`                                                 |
-| `make dev`            | Dev server                                                    |
-| `make build`          | Production build                                              |
-| `make start`          | Serve the production build                                    |
-| `make lint`           | ESLint                                                        |
-| `make format`         | Prettier write                                                |
-| `make test`           | Unit tests (RLS integration tests skip if Postgres is down)   |
-| `make check`          | Lint + tests + production build                               |
-| `make health`         | `GET /api/health` (server already running)                    |
-| `make db-up`          | Start local Postgres 16 and MinIO (Docker)                    |
-| `make db-down`        | Stop local Docker services                                    |
-| `make db-generate`    | Generate a Drizzle migration from `schema.ts`                 |
-| `make db-migrate`     | Apply migrations                                              |
-| `make db-studio`      | Open Drizzle Studio                                           |
-| `make db-smoke`       | `SELECT` from `health_checks`                                 |
-| `make storage-smoke`  | Upload a PNG to MinIO and download it via a signed URL        |
+Prefer Make (`make help`). npm scripts are the implementation.
 
-Create `.env.local` locally with those values. Never commit `.env` files, including examples. Do not use `drizzle-kit push` in production; generate + migrate only.
+| Command | What it does |
+| ------- | ------------ |
+| `make install` | Install dependencies |
+| `make dev` | Development server |
+| `make build` / `make start` | Production build and serve |
+| `make lint` / `make format` | ESLint / Prettier |
+| `make test` | Tests (Postgres integration tests skip if the DB is down) |
+| `make check` | Lint, tests, and production build |
+| `make health` | `GET /api/health` (server must already be running) |
+| `make db-up` / `make db-down` | Start or stop Postgres and MinIO |
+| `make db-generate` / `make db-migrate` | Drizzle generate / apply |
+| `make db-studio` | Drizzle Studio |
+| `make db-smoke` | Query `health_checks` |
+| `make storage-smoke` | Upload a PNG to MinIO and fetch it via signed URL |
 
-Auth is **Better Auth** (email/password) persisted in our Postgres via Drizzle, not Clerk. On first sign-up we insert `organizations` (`external_id` = `user:<better-auth-user-id>`) and a membership with role `org_admin`. Org admins invite by email and role (`POST /api/org/invites`); Dynadoc emails a magic link when `SMTP_URL` is set (`EMAIL_FROM` is the From header). Without SMTP in local dev the link is logged and shown in `/org`. The invitee signs up or signs in at `/invite/:token` and joins that org. Duplicate pending invites refresh the token. Operators cannot invite. Extra members later default to `operator`. Use `requireMembership(organizationId, userId)` and `assertRole(membership, …)` on APIs; never trust a client-sent role. Authors and org admins can hit `GET /api/document-types/:id/draft` and open Author Studio; operators get **403**. Operators fill published types at `/fill` (control panel + live print preview) and `POST /api/document-types/:id/instances`. Hidden groups unmount and are omitted from answers. Generate stays disabled until visible required fields and cross-field rules pass. Issued PDFs include wet-sign signature and initials lines (party names from answers; optional signature image). Draft-only types 404. Set a real `BETTER_AUTH_SECRET` outside local dev.
+---
 
-Tenant isolation: every business table gets `organization_id`. App queries go through `withOrganization(orgId, …)` (`SET LOCAL app.organization_id`) plus an `eq` on `organization_id`. Postgres RLS (`tenantIsolationSql` in `src/lib/db/rls.ts`) is defence in depth — `FORCE ROW LEVEL SECURITY` plus `app_current_organization_id()` so a missing org GUC raises instead of returning every row. The Docker `dynadoc` user is a superuser and would still bypass RLS, so the app session role is `dynadoc_app` (`DATABASE_APP_ROLE`, default) while migrations use `DATABASE_MIGRATE_URL` as the owner. Apply that SQL in the same migration that creates a new tenant table. Product tables include `document_families`, `document_types`, `document_type_versions`, `instances`, `assets`, `notifications`, `ingest_jobs`, and `ingest_job_files`. JSONB holds schema/template/answers. Unique `(organization_id, slug)` on types. Instance rows cannot point at a missing version. Issued instances freeze answers, resolved AST, version id, actor, and timestamp; `issued_pdf_key` is set once. Generate always inserts a new instance (issued PDFs are never overwritten). Operators list their org’s issued files at `/history`. Authors and org admins upload corpora at `/ingest` (`POST /api/ingest-jobs`, then `POST /api/ingest-jobs/:id/classify`). Classify labels each file, then category/type gates mark mismatches and low-confidence files as holdout (`clusterEligible: false`) so they never enter clause clustering. Single-type jobs require one document type (an NDA in an employment-majority job is held out). Decompose/family jobs require related types in one category (lease + employment fail). Passing files stay cluster-eligible; merge/split is only for that remaining set. After gates, authors `POST /api/ingest-jobs/:id/cluster` to group eligible files by document type into a **draft** family JSON (never published): employment vs contractor becomes two members plus an `engagementType` discriminator; matching letterhead does not merge unlike types. Each cluster is segmented into clauses; differing salary/remuneration wordings become a `select` + `variantMap`, not two unbound paragraphs. Authors review clusters, discriminator, shared fields, and a **diff vs empty draft** on `/ingest/:id`, reject clauses to drop them from the template, then `POST /api/ingest-jobs/:id/drafts` with `{ "confirmed": true, "rejectedBlockIds": [...] }` to insert **draft** types only (operators still cannot generate until the existing publish flow). `POST /api/ingest-jobs/:id/clusters` with `action: merge` collapses two clusters into one branched member (`visibleWhen` / `includeWhen`); `split` undoes that. Holdouts open an `ingest_holdout` inbox row (`/inbox`, `GET /api/notifications`) with file, detected category/type, confidence, and actions: exclude, recategorize, switch to decompose, confirm and continue. `POST /api/ingest-jobs/:id/rereview` re-runs classify/gates from that action (never a silent merge). Holdouts cannot cluster until an author action (`needsAuthorAction`). Optional LLM classify: set `INGEST_LLM=openai` and `OPENAI_API_KEY` in `.env.local` (heuristics are the default). After clustering, `GET /api/ingest-jobs/:id/style-theme` proposes a `style_theme` from source wording (same design family as the default professional theme + placeholder logo, not a scan clone). `POST` with `{ "documentTypeId" }` accepts it onto that job’s **draft** snapshot only. Authors can download a draft PDF watermark overlay from studio (`fromDraft: true` on instances). A query with no org context throws; it must not return all rows.
+## Stack
 
-Local object storage is MinIO (S3-compatible) so the same client works with Cloudflare R2 or AWS S3 by changing `S3_ENDPOINT` (and `S3_FORCE_PATH_STYLE=false` on AWS if needed). Helpers return object **keys** only; bytes stay in the bucket.
-
-Form, template, and style JSON is validated with Zod in `src/types/document-type.ts` (`schemaVersion`, expression AST with `eq`/`in`/`and`/`or`/`not`/`exists` only — no JavaScript). Import can use `documentTypeVersionJsonSchema()`. Authors `PUT /api/document-types/:id/draft` and `POST .../publish` (transaction: insert `document_type_versions`, set `current_published_version_id`, `published_at`, `published_by`). Later draft edits do not change the published row. Operators `POST .../instances` from that frozen snapshot. `PATCH .../versions/:versionId` returns **409**. Field groups can be repeatable (`repeatable: true`): operators add/remove rows (capped at 50). Bindings use `groupId[].fieldId` (for example `schedule[].description`); the resolver expands list and table blocks into one row per answer.
-
-`evaluate(expr, answers)` in `src/lib/expr/evaluate.ts` is a pure boolean walk of `eq` / `in` / `exists` / `not` / `and` / `or`. `resolveDocument` in `src/lib/resolver/resolve.ts` activates groups, interpolates bindings, and drops `includeWhen` blocks. Authors `GET /api/document-types/:id/export?source=draft|published` and `POST /api/document-types/import` (single type or `kind: "family"` bundle; always drafts, new ids). Operators `POST /api/document-types/:id/instances` then download `GET /api/instances/:id/pdf` (`@react-pdf/renderer`, S3 key on the instance when storage is up) or `GET /api/instances/:id/docx` from the same resolved AST (`docx`, no second template language). From `/history`, operators can `POST /api/instances/:id/esign` with signer emails to send the **issued PDF bytes** to Dropbox Sign (HelloSign API), mapping wet-sign slots to signature/initials tabs. The instance stores `esign_envelope_id` and status only; PDF object keys and bytes are not rewritten. Set `DROPBOX_SIGN_API_KEY` in `.env.local` (requests default to test mode unless `DROPBOX_SIGN_TEST_MODE=false`). Point Dropbox Sign callbacks at `POST /api/webhooks/dropbox-sign` (acks `Hello API Event Received`). Authors upload a type logo (`POST /api/assets/logo`); org admins upload an org default. Missing logos still produce a PDF. Create seeds a draft snapshot (one Details group, heading + paragraph, A4 Times theme) and opens `/studio/:id`, where authors edit field groups, option `activatesGroupIds`, `visibleWhen` rules, and a block canvas (heading, paragraph, list, table, page break, signature, initials) on a debounced draft save. Bindings use field ids (`{{field}}` picker); variant maps are per-select wording. Sample answers interpolate the paper preview and a live structure tree from the same resolver (warnings listed; no PDF). Groups, fields, and blocks share a rule builder for `eq` / `in` / `exists` / `not` / nested `and` / `or`. Blocks with `includeWhen` drop out of that preview when the sample answers fail the rule. Authors can toggle a themed HTML print preview (`style_theme` page size, margins, fonts, logo, signature slots) that uses the same resolved AST. Sample answers stay put across the toggle. Lists are org-scoped.
+Next.js App Router, React, TypeScript, Tailwind, Drizzle ORM, PostgreSQL, MinIO (S3-compatible), Better Auth.
